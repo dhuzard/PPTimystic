@@ -42,7 +42,11 @@ export async function sourceFingerprint(dir:string, config:Project, deck:Deck, t
   }));
   const briefFile = config.brief_required ? await safePath(dir, 'presentation-brief.yaml') : undefined;
   const briefHash = briefFile ? (await exists(briefFile) ? await hashFile(briefFile) : '<missing>') : undefined;
-  return hash(JSON.stringify({config,theme,locale,slides,sourceEvidence:await sourceEvidence(dir,deck),briefHash}));
+  // Preserve legacy demo fingerprints: before the onboarding feature, this
+  // optional project setting was absent rather than explicitly false.
+  const { brief_required: _required, ...legacyConfig } = config;
+  const configFingerprint = config.brief_required ? config : legacyConfig;
+  return hash(JSON.stringify({config:configFingerprint,theme,locale,slides,sourceEvidence:await sourceEvidence(dir,deck),...(config.brief_required?{briefHash}:{})}));
 }
 export async function fingerprints(dir: string, deck: Awaited<ReturnType<typeof loadProject>>['deck'], theme: unknown) {
   const result: BuildState['slides']={};
