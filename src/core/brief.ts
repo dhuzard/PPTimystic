@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import path from 'node:path';
 import { exists, hash, readYaml, safePath, writeYaml } from './io.js';
 import { localeSchema, type Project } from './model.js';
 
