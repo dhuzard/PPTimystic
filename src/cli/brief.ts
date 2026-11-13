@@ -79,7 +79,7 @@ export async function approveInteractively(dir: string, config: Project, fr: boo
   if (!approved) throw new Error('Creator did not approve the brief; export remains blocked.');
   const approvedBy = await input({
     message: fr ? 'Nom de la personne qui approuve' : 'Name of the approving creator',
-    validate: meaningful,
+    validate: value => value.trim().length >= 2 ? true : 'Enter the name of the approving creator.',
   });
   const complete = approveCreatorBrief(raw, config, approvedBy);
   await saveCreatorBrief(dir, complete);
