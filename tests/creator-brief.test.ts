@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import { approveCreatorBrief, blankBrief, briefDigest, checkCreatorBrief } from '../src/core/brief.js';
+import { approveCreatorBrief, blankBrief, briefDigest, checkCreatorBrief, type CreatorBrief } from '../src/core/brief.js';
 import { projectSchema } from '../src/core/model.js';
 
 const config = projectSchema.parse({
   version: 1, title: 'Research seminar', source_locale: 'en-US',
   output_locales: ['en-US'], theme: 'editorial-minimal', brief_required: true,
 });
-function completeBrief() {
+function completeBrief(): CreatorBrief {
   return {
     ...blankBrief(config),
     creator: {
