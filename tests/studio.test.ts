@@ -123,7 +123,7 @@ describe('complete local workflow',()=>{
     expect((await cli('translate','--project','first-run','--to','fr-FR','--file',completed)).code).toBe(0);
     const blocked=await cli('build','--project','first-run');
     expect(blocked.code).not.toBe(0);
-    expect(blocked.output).toContain('Creator approval');
+    expect(blocked.output).toContain('creator.profile');
     await approveTestFixture('first-run');
     expect((await cli('brief','--project','first-run','--check')).code).toBe(0);
     expect((await cli('build','--project','first-run')).code).toBe(0);
