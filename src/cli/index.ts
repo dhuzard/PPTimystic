@@ -96,6 +96,10 @@ for (const command of ['setup','new','demo']) {
         print({briefIssues:brief.errors});
         return;
       }
+      if (config.brief_required) {
+        print(fr?`Brief approuvé. Rédigez et relisez maintenant projects/${name}/content/slides.yaml à partir des sources, puis lancez npm run build -- --project ${name}.`:`Brief approved. Author and review projects/${name}/content/slides.yaml from the sources, then run npm run build -- --project ${name}.`);
+        return;
+      }
       const result=await buildProject(name); print({powerpoints:result.files});
       if (o.render) print(await renderProject(name));
       print(fr?`Prêt. Éditez projects/${name}/content/slides.yaml, puis : npm run build -- --project ${name}.`:`Ready. Edit projects/${name}/content/slides.yaml, then run npm run build -- --project ${name}.`);
