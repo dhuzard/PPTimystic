@@ -3,5 +3,6 @@ title: My presentation
 source_locale: en-US
 output_locales: [en-US]
 theme: editorial-minimal
+brief_required: true
 content: content/slides.yaml
 glossary: []
