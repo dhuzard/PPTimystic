@@ -63,7 +63,6 @@ export async function interviewCreator(dir: string, config: Project, fr: boolean
   const draft = { version: 1 as const, creator, goal, audience, delivery, content, design, constraints, further_wishes };
   // No approval is inherited when answers change.
   await saveCreatorBrief(dir, draft);
-  console.log('\n' + briefingSummary(draft));
   await approveInteractively(dir, config, fr, draft);
   return true;
 }
