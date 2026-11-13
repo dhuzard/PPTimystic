@@ -46,7 +46,7 @@ const bodySchema = z.object({
   further_wishes: z.string().trim().max(4000).default(''),
 }).strict();
 const approvalSchema = z.object({
-  approved_by: answer,
+  approved_by: z.string().trim().min(2).max(160),
   approved_at: z.string().datetime(),
   content_sha256: z.string().regex(/^[a-f0-9]{64}$/),
 }).strict();
@@ -114,7 +114,7 @@ export function approveCreatorBrief(raw: unknown, config: Project, approvedBy: s
   if (body.constraints.source_locale !== config.source_locale ||
       JSON.stringify(body.constraints.output_locales) !== JSON.stringify(config.output_locales))
     throw new Error('Brief languages must match project.yaml before approval.');
-  const person = answer.parse(approvedBy);
+  const person = z.string().trim().min(2).max(160).parse(approvedBy);
   return { ...body, approval: { approved_by: person, approved_at: now.toISOString(), content_sha256: briefDigest(body) } };
 }
 export function briefingSummary(raw: unknown): string {
