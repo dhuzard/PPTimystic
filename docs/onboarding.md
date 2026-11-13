@@ -51,7 +51,7 @@ Answers must be substantive. If something is truly unavailable or irrelevant, ex
 
 ## Files, status and validation
 
-- `projects/NAME/presentation-brief.yaml` — **authoritative structured brief** with the interview answers and an optional `approval` record. A complete example is shown below.
+- `projects/NAME/presentation-brief.yaml` — **authoritative structured brief** with the interview answers and an optional `approval` record. The CLI can recreate the draft from the saved answers.
 - `projects/NAME/presentation-brief.md` — supplementary free-form working notes; it does not satisfy the gate.
 - `projects/NAME/project.yaml` — contains `brief_required: true`, languages and theme.
 - `projects/NAME/content/slides.yaml` — source of the actual slide content, not the brief.
