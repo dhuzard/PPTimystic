@@ -7,6 +7,7 @@ import { type Deck, type Theme, type Project } from '../core/model.js';
 import { resolveChartData } from '../content/chart-data.js';
 import { consistency, fictionalDataDisclosure, translationFreshness } from '../localization/index.js';
 import { chartLabelsNeedingReview } from '../layouts/text-fit.js';
+import { creatorBriefStatus } from '../core/brief.js';
 
 export type Issue = { severity: 'error' | 'warning'; code: string; slide?: string; locale?: string; claim?: string; message: string };
 function luminance(hex: string) {
@@ -17,6 +18,8 @@ export function contrast(a: string, b: string) { const x=luminance(a), y=luminan
 export async function validateContent(dir: string, config: Project, deck: Deck, theme: Theme, locales = config.output_locales) {
   const issues: Issue[] = [];
   const add = (code: string, message: string, slide?: string, locale?: string, severity: 'error'|'warning' = 'error') => issues.push({ severity, code, message, slide, locale });
+  const brief = await creatorBriefStatus(dir, config);
+  for (const message of brief.errors) add('creator-brief', message);
   if (contrast(theme.foreground,theme.background)<4.5 || contrast(theme.secondary,theme.background)<4.5 || contrast(theme.accent, theme.background)<4.5) add('contrast','Theme text contrast is below 4.5:1.');
   const seen = new Set<string>();
   const seenTitles = new Map<string, Set<string>>();

@@ -72,6 +72,8 @@ export const projectSchema = z.object({
   version: z.literal(1), title: z.string().min(1), source_locale: localeSchema,
   output_locales: z.array(localeSchema).min(1), theme: z.string().regex(/^[a-z-]+$/).default('editorial-minimal'),
   content: z.string().default('content/slides.yaml'), font: z.string().optional(),
+  // Old projects remain compatible; newly created real projects set this to true.
+  brief_required: z.boolean().default(false),
   glossary: z.array(z.string()).default([])
 }).strict();
 export const themeSchema = z.object({

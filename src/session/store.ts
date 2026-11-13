@@ -12,6 +12,7 @@ import { buildProject, fingerprints, loadProtectionBaseline, protectionIssues } 
 import { renderProject } from '../rendering/index.js';
 import { validateGeometry } from '../layouts/index.js';
 import { validateContent } from '../validation/index.js';
+import { creatorBriefStatus } from '../core/brief.js';
 import { consistency, translationSourceFingerprint } from '../localization/index.js';
 import { commentSchema, operationSchema, textKey, textUpdateSchema, type Actor, type AgentJob, type Comment, type HistoryEntry, type ObjectLock, type Operation, type Presence, type ReferencePreview, type SessionSnapshot } from './contracts.js';
 
@@ -510,14 +511,15 @@ export class SessionStore extends EventEmitter {
       const issues = await validateContent(this.loaded.dir, this.loaded.config, this.loaded.deck, this.loaded.theme);
       this.issueCache = { revision: this.metadata.revision, issues };
     }
+    const brief = await creatorBriefStatus(this.loaded.dir, this.loaded.config);
     const now = Date.now();
     for (const [id, entry] of this.presence) if (entry.updatedAt < now - 45000) this.presence.delete(id);
     for (const [id, entry] of this.locks) if (entry.expiresAt <= now) this.locks.delete(id);
     return { project: this.project, title: this.loaded.config.title, locale, locales: this.loaded.config.output_locales, sourceLocale: this.loaded.config.source_locale,
       revision: this.metadata.revision, actor, slides, texts, comments: this.metadata.comments, jobs: this.metadata.jobs,
       history: this.metadata.history.slice(-100).map(({before,after,authorized,...entry}) => entry),
-      presence: [...this.presence.values()], locks: [...this.locks.values()], agentConfigured: this.agentConfigured, exportBlocked: this.loaded.deck.slides.some(slide => slide.native_text) || await exists(await safePath(this.loaded.dir,'content/.block-session-export')),
-      issues: [...this.issueCache.issues,...slides.flatMap(slide=>slide.scene ? validateGeometry(slide.scene.geometry) : [])] };
+      presence: [...this.presence.values()], locks: [...this.locks.values()], agentConfigured: this.agentConfigured, briefReady: brief.approved, exportBlocked: !brief.approved || this.loaded.deck.slides.some(slide => slide.native_text) || await exists(await safePath(this.loaded.dir,'content/.block-session-export')),
+      issues: [...this.issueCache.issues.filter(issue=>issue.code!=='creator-brief'),...brief.errors.map(message=>({severity:'error' as const,code:'creator-brief',message})),...slides.flatMap(slide=>slide.scene ? validateGeometry(slide.scene.geometry) : [])] };
   }
   async comment(actor: Actor, raw: unknown) {
     await this.refresh(true);
@@ -608,6 +610,8 @@ export class SessionStore extends EventEmitter {
   }
   async export(actor: Actor, raw: unknown) {
     this.editor(actor); await this.refresh(true);
+    const brief=await creatorBriefStatus(this.loaded.dir,this.loaded.config);
+    if(!brief.approved) fail(409, 'Creator brief not approved. Run npm run brief -- --project '+this.project+'. '+brief.errors.join('; '));
     if (this.loaded.deck.slides.some(slide => slide.native_text)) fail(409, 'Native text edits are saved in YAML. PowerPoint export remains disabled until native roundtrip validation is complete.');
     if (await exists(await safePath(this.loaded.dir, 'content/.block-session-export'))) fail(409, 'This trial uses a presentation with custom layouts or media. Session export is disabled because the generic renderer cannot reproduce the original PowerPoint.');
     const { locale, render } = z.object({ locale: z.string(), render: z.boolean().default(false) }).strict().parse(raw);

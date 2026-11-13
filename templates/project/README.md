@@ -1,1 +1,5 @@
-Use `npm run new -- --project NAME` for the guided, complete project scaffold. This folder is a minimal schema reference for advanced users, not a second scaffold implementation. The CLI creates inputs/, content/, assets/, feedback/ and output/ and writes a project-specific illustration-style.md.
+# Project schema reference
+
+For real presentations, use `npm run new -- --project NAME` rather than copying this folder. The CLI creates complete inputs/, content/, assets/, feedback/ and output/ directories, plus a **draft** `presentation-brief.yaml`.
+
+This minimal reference sets `brief_required: true`; a project made from it cannot export until you complete `npm run brief -- --project NAME` and the creator explicitly approves the brief. The validated YAML is authoritative; `presentation-brief.md` is only supplemental notes. See [mandatory onboarding](../../docs/onboarding.md).

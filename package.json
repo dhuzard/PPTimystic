@@ -11,6 +11,7 @@
   "scripts": {
     "setup": "tsx src/cli/index.ts setup",
     "new": "tsx src/cli/index.ts new",
+    "brief": "tsx src/cli/index.ts brief",
     "demo": "tsx src/cli/index.ts demo",
     "doctor": "tsx src/cli/index.ts doctor",
     "build": "tsx src/cli/index.ts build",
@@ -57,10 +58,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dhuzard/PPTimistic.git"
+    "url": "https://github.com/dhuzard/PPTimystic.git"
   },
-  "homepage": "https://github.com/dhuzard/PPTimistic#readme",
+  "homepage": "https://github.com/dhuzard/PPTimystic#readme",
   "bugs": {
-    "url": "https://github.com/dhuzard/PPTimistic/issues"
+    "url": "https://github.com/dhuzard/PPTimystic/issues"
   }
 }

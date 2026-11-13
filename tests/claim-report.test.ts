@@ -8,6 +8,8 @@ import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import JSZip from 'jszip';
 import YAML from 'yaml';
+import { approveCreatorBrief } from '../src/core/brief.js';
+import { projectSchema } from '../src/core/model.js';
 
 const exec=promisify(execFile),repo=process.cwd(),excerpt='Evidence excerpt kept in local source only.';
 let sandbox:string;
@@ -37,6 +39,21 @@ beforeAll(async()=>{
   deck.slides[1].source_refs.push(source.id);
   deck.slides[1].claims=[{id:'C001',field:'body',source_ref:source.id,excerpt,locator:'page 4, paragraph 2'}];
   await fs.writeFile(projectFile('content/slides.yaml'),YAML.stringify(deck));
+  // A real project created with sources cannot build until the creator's
+  // completed brief has been explicitly approved; this is a test fixture.
+  const config=projectSchema.parse(YAML.parse(await fs.readFile(projectFile('project.yaml'),'utf8')));
+  const raw=YAML.parse(await fs.readFile(projectFile('presentation-brief.yaml'),'utf8'));
+  const complete={...raw,
+    creator:{profile:'Research scientist presenting original work',expertise:'Experienced research scientist',working_preferences:'Concise and editable scientific slides'},
+    goal:{purpose:'Explain the provenance example',audience_action:'Assess evidence traceability',central_message:'Scientific statements need verifiable source references'},
+    audience:{description:'Scientific collaborators and reviewers',prior_knowledge:'Familiar with experimental research',needs_and_concerns:'Need unambiguous source links and caveats'},
+    delivery:{format_and_setting:'In-person research demonstration',duration_minutes:20},
+    content:{scope_and_structure:'Demonstration of claims and supporting sources',evidence_and_sources:'Local imported example text file',uncertainties_and_exclusions:'No unsupported results or fabricated citations'},
+    design:{tone:'Scientifically precise and succinct',visual_preferences:'Editable diagrams and clear typography'},
+    constraints:{source_locale:config.source_locale,output_locales:config.output_locales,accessibility_and_other:'Readable high-contrast slides'},
+    further_wishes:'Retain traceable notes and original evidence',
+  };
+  await fs.writeFile(projectFile('presentation-brief.yaml'),YAML.stringify(approveCreatorBrief(complete,config,'Test Creator')));
   const build=await cli('build','--project','claim-demo');
   expect(build.code).toBe(0);
 },60000);

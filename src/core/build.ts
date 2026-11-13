@@ -40,7 +40,13 @@ export async function sourceFingerprint(dir:string, config:Project, deck:Deck, t
     return {...s,content:s.content[locale]??null,assetSha256:asset && await exists(asset) ? await hashFile(asset) : asset ? '<missing>' : null,
       ...(s.objects?.some(object=>object.type==='image') ? {objectAssets:await customAssetEvidence(dir,s)} : {})};
   }));
-  return hash(JSON.stringify({config,theme,locale,slides,sourceEvidence:await sourceEvidence(dir,deck)}));
+  const briefFile = config.brief_required ? await safePath(dir, 'presentation-brief.yaml') : undefined;
+  const briefHash = briefFile ? (await exists(briefFile) ? await hashFile(briefFile) : '<missing>') : undefined;
+  // Preserve legacy demo fingerprints: before the onboarding feature, this
+  // optional project setting was absent rather than explicitly false.
+  const { brief_required: _required, ...legacyConfig } = config;
+  const configFingerprint = config.brief_required ? config : legacyConfig;
+  return hash(JSON.stringify({config:configFingerprint,theme,locale,slides,sourceEvidence:await sourceEvidence(dir,deck),...(config.brief_required?{briefHash}:{})}));
 }
 export async function fingerprints(dir: string, deck: Awaited<ReturnType<typeof loadProject>>['deck'], theme: unknown) {
   const result: BuildState['slides']={};
@@ -128,6 +134,7 @@ export async function buildProject(name: string, options: {locale?:string; autho
   const buildId=`${stamp()}-${crypto.randomUUID().slice(0,8)}`;
   const sources:Record<string,string>={
     'project.yaml':await hashFile(await safePath(dir,'project.yaml')),
+    ...(config.brief_required ? {'presentation-brief.yaml':await hashFile(await safePath(dir,'presentation-brief.yaml'))} : {}),
     [config.content]:await hashFile(await safePath(dir,config.content)),
     [`config/themes/${config.theme}.yaml`]:await hashFile(path.join(process.cwd(),'config','themes',`${config.theme}.yaml`))
   };

@@ -18,6 +18,8 @@ import { drawSlide, validateGeometry } from '../src/layouts/index.js';
 import PptxGenJS from 'pptxgenjs';
 import { protectionIssues, type BuildState } from '../src/core/build.js';
 import { within, safePath } from '../src/core/io.js';
+import { approveCreatorBrief } from '../src/core/brief.js';
+import { projectSchema } from '../src/core/model.js';
 
 const exec=promisify(execFile), repo=process.cwd();
 let sandbox:string;
@@ -28,6 +30,23 @@ async function cli(...args:string[]) {
 const file=(p:string)=>path.join(sandbox,'projects/demo',p);
 async function deck() {return YAML.parse(await fs.readFile(file('content/slides.yaml'),'utf8'));}
 async function save(value:unknown) {await fs.writeFile(file('content/slides.yaml'),YAML.stringify(value));}
+async function approveTestFixture(name:string) {
+  const base=path.join(sandbox,'projects',name);
+  const cfg=projectSchema.parse(YAML.parse(await fs.readFile(path.join(base,'project.yaml'),'utf8')));
+  const raw=YAML.parse(await fs.readFile(path.join(base,'presentation-brief.yaml'),'utf8'));
+  const filled={...raw,
+    creator:{profile:'Research scientist presenting original work',expertise:'Experienced neuroscientist',working_preferences:'Concise, evidence-based and editable slides'},
+    goal:{purpose:'Explain experimental findings',audience_action:'Critically assess the research',central_message:'Evidence and uncertainty must be clearly communicated'},
+    audience:{description:'Research colleagues and collaborators',prior_knowledge:'Knowledgeable about research methods',needs_and_concerns:'Relevant comparisons and limitations need to be clear'},
+    delivery:{format_and_setting:'In-person research seminar',duration_minutes:25},
+    content:{scope_and_structure:'Introduction, methods, observations and limitations',evidence_and_sources:'Imported local documents only',uncertainties_and_exclusions:'No empirical results absent from the supplied sources'},
+    design:{tone:'Scientifically precise, concise wording',visual_preferences:'Editable diagrams and readable figures'},
+    constraints:{source_locale:cfg.source_locale,output_locales:cfg.output_locales,accessibility_and_other:'High contrast, no confidential participant information'},
+    further_wishes:'Keep full details in notes',
+  };
+  await fs.writeFile(path.join(base,'presentation-brief.yaml'),YAML.stringify(approveCreatorBrief(filled,cfg,'Test Creator')));
+}
+
 
 beforeAll(async()=>{
   sandbox=await fs.mkdtemp(path.join(os.tmpdir(),'pptimistic-test-'));
@@ -102,6 +121,11 @@ describe('complete local workflow',()=>{
     }}))};
     const completed=path.join(sandbox,'translation-fr.yaml');await fs.writeFile(completed,YAML.stringify(translated));
     expect((await cli('translate','--project','first-run','--to','fr-FR','--file',completed)).code).toBe(0);
+    const blocked=await cli('build','--project','first-run');
+    expect(blocked.code).not.toBe(0);
+    expect(blocked.output).toContain('creator.profile');
+    await approveTestFixture('first-run');
+    expect((await cli('brief','--project','first-run','--check')).code).toBe(0);
     expect((await cli('build','--project','first-run')).code).toBe(0);
     expect((await cli('validate','--project','first-run')).code).toBe(0);
     const rendered=await cli('render','--project','first-run','--renderer','libreoffice');expect(rendered.code,rendered.output).toBe(0);

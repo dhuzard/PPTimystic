@@ -7,6 +7,8 @@ import { artifactIssues, inspectArtifacts } from '../core/artifacts.js';
 import { bundleProject } from '../core/bundle.js';
 import { doctor } from '../core/doctor.js';
 import { createProject, availableName } from '../core/projects.js';
+import { creatorBriefStatus } from '../core/brief.js';
+import { interviewCreator, approveInteractively } from './brief.js';
 import { exists, hash, hashFile, loadProject, projectDir, readYaml, safePath, stamp, writeYaml, atomicWrite, root } from '../core/io.js';
 import { localeSchema, projectSchema } from '../core/model.js';
 import { ingest } from '../content/ingest.js';
@@ -75,19 +77,56 @@ for (const command of ['setup','new','demo']) {
       if (!['editorial-minimal','scientific-technical','illustrated-minimal'].includes(theme)) throw new Error(`Unknown theme: ${theme}`);
       if (inputs && !(await exists(path.resolve(inputs)))) throw new Error(`Input folder not found: ${path.resolve(inputs)}. Check the path and try again; for a plan, pass its containing folder with --from-plan.`);
       const name=o.project??(command==='demo'?'demo':await availableName('my-presentation'));
+      // "demo" and unattended setup without sources remain explicitly fictional.
+      // All newly created real projects require a substantive, creator-approved brief.
+      const briefRequired = command==='new' || (command==='setup' && (interactive || Boolean(inputs) || Boolean(o.fromPlan)));
       if (command==='demo'&&await exists(projectDir(name))) print(`Rebuilding existing ${name}; its source content is preserved.`);
-      else await createProject({name,title,source,locales:outputs,theme,inputs:inputs||undefined,fromPlan:o.fromPlan});
+      else await createProject({name,title,source,locales:outputs,theme,inputs:inputs||undefined,fromPlan:o.fromPlan,briefRequired});
+      const {dir,config}=await loadProject(name);
+      if (config.brief_required && interactive) await interviewCreator(dir,config,fr);
       if (inputs) {
         const sources=(await readYaml(path.join(projectDir(name),'content/sources.yaml'))).sources;
         const failures=sources.filter((s:{error?:string})=>s.error);
         if(failures.length) print({extractionWarnings:failures});
       }
       if (inputs && !o.fromPlan) print(fr?'Documents importés. Le contenu actuel est une démonstration fictive, pas un résumé de vos documents.':'Documents imported. The current content is a fictional demonstration, not a summary of your documents.');
+      const brief=await creatorBriefStatus(dir,config);
+      if (!brief.approved) {
+        print(fr?`Projet préparé, mais aucun PowerPoint ne sera généré avant validation du brief. Lancez : npm run brief -- --project ${name} --ui fr`:`Project created as a draft. PowerPoint generation is blocked until the creator approves the brief. Run: npm run brief -- --project ${name}`);
+        print({briefIssues:brief.errors});
+        return;
+      }
+      if (config.brief_required) {
+        print(fr?`Brief approuvé. Rédigez et relisez maintenant projects/${name}/content/slides.yaml à partir des sources, puis lancez npm run build -- --project ${name}.`:`Brief approved. Author and review projects/${name}/content/slides.yaml from the sources, then run npm run build -- --project ${name}.`);
+        return;
+      }
       const result=await buildProject(name); print({powerpoints:result.files});
       if (o.render) print(await renderProject(name));
-      print(fr?`Prêt. Demandez à votre agent de modifier projects/${name}/content/slides.yaml, puis lancez npm run build -- --project ${name}.`:`Ready. Ask your agent to edit projects/${name}/content/slides.yaml, then run npm run build -- --project ${name}.`);
+      print(fr?`Prêt. Éditez projects/${name}/content/slides.yaml, puis : npm run build -- --project ${name}.`:`Ready. Edit projects/${name}/content/slides.yaml, then run npm run build -- --project ${name}.`);
     });
 }
+projectOption(cli.command('brief').description('Mandatory creator interview, brief verification, or explicit human approval'))
+  .option('--check','Check completion and approval without editing')
+  .option('--approve','Approve a completed YAML brief after interactive human review')
+  .option('--ui <language>','Interface language: en or fr')
+  .action(async (_name,o)=>{
+    if (o.check && o.approve) throw new Error('Choose --check or --approve, not both.');
+    const {dir,config}=await loadProject(o.project);
+    const fr=language(o.ui)==='fr';
+    if (!config.brief_required) {
+      print('This demo/legacy project does not enforce a creator brief. New real projects require it.');
+      return;
+    }
+    if (o.check) {
+      const status=await creatorBriefStatus(dir,config);
+      print(status);
+      if (!status.approved) process.exitCode=1;
+      return;
+    }
+    if (!process.stdin.isTTY) throw new Error('The creator interview and approval require a terminal. --yes cannot approve a brief.');
+    if (o.approve) await approveInteractively(dir,config,fr);
+    else await interviewCreator(dir,config,fr);
+  });
 cli.command('doctor').description('Check Node, dependencies, fonts, writable storage and optional renderers').option('--ui <language>','Interface language').action(async o=>{
   if(language(o.ui)==='fr') print('Diagnostic : les composants facultatifs manquants ne bloquent pas la création PowerPoint.');
   const d=await doctor();print(d); if(!d.nodeOk||!d.writable||d.dependencies.some(d=>!d.available)) process.exitCode=1;

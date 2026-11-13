@@ -1,112 +1,80 @@
 # PPTimistic
 
-**Parce que créer des diapositives devrait donner le sourire.**
+**Des présentations PowerPoint modifiables, construites à partir des objectifs du créateur et de sources traçables.**
 
-Créez des présentations PowerPoint sobres et modifiables avec un agent de programmation ou un terminal local. Conservez les sources, les illustrations, les traductions et les décisions éditoriales dans un même projet. Aucun compte, service payant ou clé API n'est nécessaire.
+PPTimistic est un outil local, utilisable avec un agent de programmation ou un terminal. Texte, formes, schémas, notes et graphiques pris en charge restent modifiables. Aucun compte, service payant ni clé API n'est requis.
 
-[English → README.md](README.md)
+[English](README.md) · [Initialisation et validation du brief](docs/onboarding.md) · [Guide complet](docs/workflows.md) · [Limites](docs/limitations.md)
 
-![Studio collaboratif sur une diapositive de démonstration fictive](docs/studio-preview.png)
+![Studio collaboratif PPTimistic](docs/studio-preview.png)
 
-*Le studio local permet de modifier les objets et de commenter une diapositive.*
+## Démarrer une véritable présentation
 
-![Démonstration de cinq diapositives fictives, rendue dans PowerPoint](docs/demo-contact-sheet.png)
-
-## Conception des diapositives et recherches
-
-PPTimistic suit une démarche éditoriale éclairée par la recherche : organiser chaque diapositive autour d'un message central, l'exprimer dans un titre concis et l'appuyer sur des éléments pertinents. Un message ne signifie pas un seul objet visuel : deux graphiques coordonnés peuvent être nécessaires pour étayer une comparaison. Les titres doivent préserver la portée et l'incertitude des données ; par exemple, « Ces résultats sont compatibles avec… » peut convenir lorsqu'un lien de causalité n'est pas établi. Le texte reste lisible, les visuels utiles et les détails complémentaires peuvent figurer dans les notes ; les citations et les objets PowerPoint restent modifiables.
-
-Cette démarche s'appuie notamment sur les références suivantes :
-
-- [Naegle (2021), *Ten simple rules for effective presentation slides*](https://pmc.ncbi.nlm.nih.gov/articles/PMC8638955/) recommande une idée centrale par diapositive comme règle pratique.
-- [Mayer (2020), *Multimedia Learning*, troisième édition](https://doi.org/10.1017/9781316941355) présente la segmentation des contenus multimédias. Son application à des diapositives dont le rythme est dirigé par l'orateur est une adaptation ; elle ne démontre pas une règle universelle d'une idée par diapositive.
-- [Sweller, van Merriënboer et Paas (2019), *Cognitive Architecture and Instructional Design: 20 Years Later*](https://doi.org/10.1007/s10648-019-09465-5) expliquent comment les limites de la mémoire de travail et les traitements inutiles peuvent nuire à l'apprentissage.
-- [Garner et Alley (2013), *How the Design of Presentation Slides Affects Audience Comprehension*](https://www.ijee.ie/articles/Vol29-6/23_ijee2791ns.pdf) ont observé une meilleure compréhension et une meilleure mémorisation différée avec des diapositives « affirmation–preuve » dans une étude auprès de 110 étudiants en ingénierie. Les modèles comparés différaient sur plusieurs caractéristiques : les résultats ne peuvent donc pas être attribués aux seuls titres.
-- [Fiorella et Mayer (2021), *Principles for Reducing Extraneous Processing in Multimedia Learning*](https://doi.org/10.1017/9781108894333.019) traitent notamment de l'exclusion des éléments sans rapport, de la mise en évidence des informations importantes et du rapprochement des textes et visuels associés.
-
-Ces références éclairent la démarche éditoriale ; elles ne démontrent pas que PPTimistic améliore lui-même l'apprentissage. Une personne ou un agent rédige le contenu et choisit sa mise en page. Les contrôles automatiques peuvent signaler un dépassement estimé ou une référence source manquante, mais ne déterminent pas si une diapositive transmet une seule idée ou si une source étaye une affirmation. Une relecture scientifique et visuelle reste nécessaire.
-
-Pour une présentation réelle, complétez `projects/<nom>/presentation-brief.md` avec l'utilisateur ou l'agent afin de préciser le public, l'objectif, les preuves, les préférences visuelles et le contexte de présentation. Les nouveaux projets comprennent une trame vierge ; l'assistant d'installation ne mène pas cet entretien et ne valide pas les réponses. Consultez la [préparation et la liste de relecture éditoriale](docs/workflows.md#initialize-the-presentation-brief), en anglais, avant livraison. La mise en page de graphique intégrée prend en charge un seul graphique modifiable à barres verticales par diapositive ; elle ne crée pas encore de comparaison à deux graphiques. Voir les [limites](docs/limitations.md).
-
-## Collaborer dans le navigateur
-
-Après avoir créé un projet, lancez `npm run session -- --project research-talk --port 0`. Le serveur local affiche des invitations distinctes pour le propriétaire, les éditeurs et les relecteurs. Vous pouvez modifier le texte, les positions, les formes et les images, échanger des commentaires et exporter un PowerPoint modifiable. Un adaptateur d’agent facultatif peut proposer des modifications ; aucun agent ni service payant n’est activé par défaut. Le [guide des sessions](docs/session.md), en anglais, décrit les rôles, l’accès sur un réseau privé et la configuration de l’agent. L’interface du studio est actuellement en anglais ; les langues des diapositives restent indépendantes.
-
-L’aperçu expérimental d’un PowerPoint existant est plus limité : certains textes peuvent être modifiés, mais les autres objets d’origine ne sont pas modifiables et l’export de ces modifications vers PowerPoint n’est pas encore disponible. Le rendu dans le navigateur reste approximatif.
-
-## Première présentation
-
-Installez Node.js **22.13 ou ultérieur** avant d'exécuter les commandes ci-dessous.
-
-### Créer votre dépôt à partir du modèle
-
-Sur GitHub, choisissez **[Use this template → Create a new repository](https://github.com/new?template_name=PPTimistic&template_owner=dhuzard)**. GitHub crée un nouveau dépôt indépendant du dépôt amont PPTimistic, dans votre compte.
-
-Clonez le dépôt que vous venez de créer, puis lancez l'assistant dans ce dossier :
+**Prérequis :** Node.js 22.13 ou ultérieur, avec npm. Vous pouvez [créer un dépôt à partir du modèle](https://github.com/new?template_name=PPTimystic&template_owner=dhuzard), ou cloner le [dépôt source](https://github.com/dhuzard/PPTimystic).
 
 ```sh
-git clone https://github.com/VOTRE-COMPTE/VOTRE-DEPOT.git
-cd VOTRE-DEPOT
+git clone https://github.com/dhuzard/PPTimystic.git
+cd PPTimystic
 npm install
-npm run setup -- --ui fr
+npm run new -- --project mon-expose --inputs "chemin/vers/documents" --ui fr --no-render
 ```
 
-### Cloner le dépôt amont
+En mode interactif, l'initialisation demande d'abord le titre, les langues et le style. Elle impose ensuite un **entretien de cadrage** portant sur le profil et les préférences du créateur, le but de l'exposé, le public et ses connaissances, le message principal, les conditions de présentation, les sources, les incertitudes, le ton, les visuels et les contraintes.
 
-Pour travailler à partir d'une copie locale du projet amont, exécutez :
+**Le créateur doit relire et approuver explicitement le brief avant toute génération PowerPoint.** Le brief validé est conservé dans `projects/mon-expose/presentation-brief.yaml`. Le fichier `presentation-brief.md` reste un espace de notes complémentaires : il ne constitue pas une validation.
+
+Les documents importés sont conservés localement. Ils ne sont **pas automatiquement résumés** : le créateur ou son agent doit ensuite rédiger les diapositives dans `content/slides.yaml`, en respectant le brief et les preuves disponibles.
 
 ```sh
-git clone https://github.com/dhuzard/PPTimistic.git pptimistic
-cd pptimistic
-npm install
-npm run setup -- --ui fr
+npm run brief -- --project mon-expose --check   # Vérifier le brief approuvé
+npm run build -- --project mon-expose           # Créer le PPTX modifiable
+npm run validate -- --project mon-expose        # Vérifier sources et sortie
+npm run render -- --project mon-expose          # Aperçus facultatifs
+npm run bundle -- --project mon-expose          # Préparer la livraison
 ```
 
-Ouvrez le dossier dans VS Code si vous souhaitez utiliser Codex ou Claude Code.
+Les fichiers PowerPoint sont produits dans `projects/mon-expose/output/`. Les contrôles automatiques ne remplacent pas la relecture scientifique, visuelle et éditoriale.
 
-L'assistant demande le titre, la langue source, les langues de sortie, le style visuel et un dossier de documents facultatif. Validez les valeurs par défaut avec Entrée. Il crée une démonstration de cinq diapositives. Les graphiques utilisent des **données fictives**, sans interprétation scientifique.
+### Initialisation non interactive
 
-Les fichiers sont enregistrés dans `projects/<nom>/output/presentation.fr-FR.pptx` et `presentation.en-US.pptx`. Textes, formes, flèches et graphiques restent modifiables. Un nouvel appel sans nom crée un nouveau dossier numéroté. Un nom explicite existant est refusé, sans écrasement.
-
-Pour une initialisation sans interaction :
+L'option `--yes` **ne valide jamais le brief**. Elle crée un projet en brouillon, sans autoriser la construction ou l'export d'une véritable présentation.
 
 ```sh
-npm run setup -- --yes --project ma-presentation --ui fr --no-render
+npm run new -- --project mon-expose --yes --inputs "chemin/vers/documents" --no-render
+npm run brief -- --project mon-expose --ui fr   # Entretien et approbation par le créateur
+npm run brief -- --project mon-expose --check
 ```
 
-Pour partir de vos documents, créez un projet séparé. Les fichiers sont importés et conservés localement, sans résumé automatique :
+Après une modification manuelle du fichier YAML, lancez `npm run brief -- --project mon-expose --approve --ui fr`. L'approbation est liée à une empreinte du contenu : toute modification pertinente nécessite une nouvelle confirmation. Un agent ne peut pas inférer cette approbation. Voir le [guide d'initialisation](docs/onboarding.md), en anglais, pour les règles détaillées.
+
+## Explorer la démonstration fictive
 
 ```sh
-npm run new -- --project recherche --inputs "chemin/vers/dossier-du-plan" --from-plan --locales en-US --yes --ui fr
-npm run translate -- --project recherche --to fr-FR
-# Complétez chaque traduction dans le fichier YAML indiqué, puis :
-npm run translate -- --project recherche --to fr-FR --file "chemin/traductions.yaml"
-npm run build -- --project recherche
-npm run validate -- --project recherche
-npm run render -- --project recherche # facultatif ; la création du PPTX ne dépend pas d'un moteur
-npm run bundle -- --project recherche
+npm run demo -- --project demo --no-render
+npm run session -- --project demo --port 0
 ```
 
-## Utiliser vos documents
+Cette démonstration bilingue contient cinq diapositives et des **données de graphiques fictives**. `npm run setup -- --yes`, sans documents source, permet également une démonstration non interactive. Utilisez `npm run new` pour créer une véritable présentation.
+
+![Cinq diapositives fictives](docs/demo-contact-sheet.png)
+
+## Produire le contenu et collaborer
+
+L'import de fichiers PDF textuels, DOCX, Markdown/TXT et CSV conserve la provenance des sources. Il ne démontre ni l'exactitude des résultats ni la pertinence des affirmations. Un agent doit lire les documents, conserver les nuances et signaler les preuves manquantes.
+
+Pour importer littéralement un plan Markdown (un seul fichier avec titres `##`), utilisez :
 
 ```sh
-npm run new -- --project recherche --inputs "chemin/vers/documents" --yes --ui fr
-npm run build -- --project recherche
-npm run validate -- --project recherche
-npm run render -- --project recherche
+npm run new -- --project cours --yes --inputs "chemin/vers/plan" --from-plan --source fr-FR --locales fr-FR
+npm run brief -- --project cours --ui fr
+npm run build -- --project cours
 ```
 
-`npm run validate -- --project recherche --source-only` vérifie le contenu source et la mise en page sans vérifier les fichiers PowerPoint générés.
+La structure est préservée sans réécriture scientifique automatique. Les textes trop denses peuvent être rejetés lors de la validation.
 
-Les documents sont copiés et extraits localement avec leur provenance. **L'import ne crée pas automatiquement un résumé scientifique.** Le contenu reste une démonstration fictive tant que vous ou votre agent n'avez pas rédigé les diapositives. Demandez par exemple :
+Le studio collaboratif local est lancé par `npm run session -- --project mon-expose --port 0`. Il permet l'édition des objets, les commentaires, les révisions et l'export, **mais bloque l'export tant que le brief du projet réel n'est pas approuvé**. Aucun agent ou service externe n'est actif par défaut. Voir le [guide des sessions](docs/session.md).
 
-> Crée cette présentation à partir de projects/recherche/inputs. Respecte l'ordre du plan, cite les sources, signale les informations manquantes et conserve les nuances scientifiques. Génère les versions française et anglaise, valide-les et montre les aperçus.
-
-Markdown, TXT, DOCX, PDF textuels, CSV et images usuelles sont pris en charge. Les formats non reconnus sont conservés et signalés. Un plan Markdown unique peut être importé avec `--from-plan --locales fr-FR --source fr-FR` : chaque titre `##` devient une diapositive, sans réécriture du texte. Voir [l'exemple](examples/slide-plan.md).
-
-Pour relier une affirmation à un passage précis, ajoutez une entrée `claims` facultative vers un extrait de document importé, puis lancez `npm run claims -- --project recherche`. Le rapport local indique l'ID de la source, son chemin, son empreinte, le repère et les éventuelles erreurs, sans afficher l'extrait. Voir le [schéma des affirmations](docs/architecture.md). La pertinence scientifique du passage doit être relue par une personne compétente. `npm run claims -- --project recherche --write-markdown` crée aussi `output/claims-report.md` avec des liens vers les fichiers locaux et l'état de leurs empreintes. Ce rapport contient le texte des diapositives et des chemins privés.
-
-Pour créer un graphique modifiable à partir de données réelles, importez un CSV et indiquez explicitement son empreinte, ses colonnes et ses lignes dans le YAML. Le graphique et son classeur intégré reprennent les valeurs sélectionnées ; une modification du CSV bloque la reconstruction jusqu'à relecture. Voir le [schéma du graphique](docs/architecture.md).
+La démarche éditoriale vise un message central par diapositive, appuyé sur des preuves adéquates et exprimé sans exagérer la causalité. Plusieurs éléments graphiques peuvent servir un même message. Les travaux de [Naegle (2021)](https://pmc.ncbi.nlm.nih.gov/articles/PMC8638955/), [Mayer (2020)](https://doi.org/10.1017/9781316941355) et [Sweller et al. (2019)](https://doi.org/10.1007/s10648-019-09465-5) éclairent ces choix ; ils ne démontrent pas que PPTimistic améliore lui-même l'apprentissage.
 
 ## Illustrations et traductions
 

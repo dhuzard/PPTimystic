@@ -1,18 +1,20 @@
 # Working with a presentation
 
-## First run and projects
+## First run: mandatory creator brief
 
-`npm run setup` checks the environment, offers five essential settings, writes a new project and builds its demonstration deck. On a noninteractive terminal the same command uses defaults. `--yes` makes that behavior explicit. Use `--project NAME` to choose an independent folder. Existing names are refused, including on setup reruns. With no explicit name, setup/new chooses a fresh numbered folder. `npm run demo` alone rebuilds an existing demo without replacing its source.
+Use `npm run new -- --project NAME` for a real presentation. Interactive creation requests the initial title/languages/theme and then calls the **mandatory creator discovery interview**. The creator reviews and approves the generated `presentation-brief.yaml` before the project can build or export. It is a validated, versioned project contract, not a generic prompt.
 
-`npm run validate -- --project NAME` checks both authored source and whether each configured PPTX is present, unchanged since its build, and current with the source. Use `npm run validate -- --project NAME --source-only` while authoring content before the first build. Rendering also requires a current PPTX and records its hash and source fingerprint in `render.json`.
+`--yes` is **not** approval: `npm run new -- --project NAME --yes` creates a draft. Complete the interview later with `npm run brief -- --project NAME`. A prefilled YAML brief can be reviewed and explicitly approved with `npm run brief -- --project NAME --approve` in a terminal. `npm run brief -- --project NAME --check` verifies completeness and checks the approval fingerprint, returning nonzero while blocked.
 
-The CLI initializes a coherent project directly; `templates/project/` is a minimal manual reference. Node and dependency failures block setup. Optional rendering, fonts and external providers are diagnosed without requiring API keys. Setup UI supports English and French; advanced commands, help, diagnostics and validation messages are primarily English in v0.1.
+For the fictional five-slide demo, use `npm run demo -- --project demo`, or `npm run setup -- --yes` without inputs. Demo projects remain exempt; older projects without `brief_required` remain compatible. The real project gate is controlled by `brief_required: true` in `project.yaml`; the builder, validator, studio export and delivery workflow enforce it. An agent cannot supply human approval via `--yes`.
+
+A real project starts with a scaffolded demonstration YAML placeholder, **not** an exported factual deck. Author `content/slides.yaml` from source material and an agreed narrative, then run `npm run build -- --project NAME`, `npm run validate -- --project NAME` and, optionally, `npm run render -- --project NAME`. Source-only validation also checks the gate. Built files are tracked by hashes so changed source/brief content makes old outputs stale. See [the full creator onboarding guide](onboarding.md).
 
 ## Initialize the presentation brief
 
-Before authoring a real deck, fill in `projects/<name>/presentation-brief.md` with the user or a coding agent. Establish the purpose and intended audience action; audience expertise and accessibility needs; delivery mode, venue and duration; core message, scope and required plan; sources and evidence limits; visual references and assets; languages; and delivery constraints. Record decisions and open questions. Ask only for material information that is not already available, and mark unknowns explicitly instead of inventing answers.
+The mandatory interview asks for presenter profile, expertise and working preferences; purpose and intended audience action; the central message; audience knowledge, sensitivities and needs; delivery format/duration; subject scope, supplied evidence and uncertainty; visual and tone preferences; and delivery, accessibility and language constraints. Follow up on material gaps. Unknowns are not acceptable as approved final answers: give a substantive explanation when no empirical data or specific constraint applies.
 
-New projects include a blank brief. For an existing project, create one without overwriting other files. The five-question setup does not conduct this interview, and the brief is not automatically validated, included in deliveries, or used to modify slides. It guides a person or agent; `content/slides.yaml` remains authoritative. Treat the brief as private project material and do not send its contents to external services without the required authorization.
+The authoritative file is `projects/<name>/presentation-brief.yaml`. `presentation-brief.md` is *supplementary notes only*. Approval stores the confirming creator's name, date and SHA-256 content fingerprint. Edits to the approved brief invalidate that approval; run an explicit review again before building. The tool cannot prove the accuracy of narrative judgments, so the person approving must verify the content. This is an auditable local workflow control rather than cryptographic identity verification. Do not include sensitive personal information unnecessarily or transmit these files to external services without authorization.
 
 ## Editorial review before delivery
 

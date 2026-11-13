@@ -1,119 +1,90 @@
 # PPTimistic
 
-**Because making slides should feel this hopeful.**
+**Creator-led, editable PowerPoint presentations — with sources, decisions and revisions kept together.**
 
-Create clean, editable PowerPoint presentations with a coding agent or a local terminal. Keep your sources, scientific claims, illustrations and translations together in one reproducible project. No account, API key or paid service is required.
+PPTimistic is a local-first Node.js toolkit for building reproducible presentations with a coding agent or from the terminal. Text, shapes, diagrams, notes, and supported charts remain editable in PowerPoint. No account, paid provider or API key is required.
 
-[Français → README.fr.md](README.fr.md)
+[Français](README.fr.md) · [Creator onboarding](docs/onboarding.md) · [Full workflows](docs/workflows.md) · [Limitations](docs/limitations.md)
 
-![Collaborative studio editing a slide from the fictional demo](docs/studio-preview.png)
+![PPTimistic collaborative studio](docs/studio-preview.png)
 
-*The local studio: edit slide objects, inspect properties and discuss changes.*
+*The local studio edits slide objects and enables collaborative review.*
 
-![Five fictional demo slides rendered in PowerPoint](docs/demo-contact-sheet.png)
+## Start here — a real presentation
 
-*The generated PowerPoint uses editable text, diagrams and charts; the chart data is fictional.*
-
-## Slide design and research
-
-PPTimistic follows a research-informed editorial approach: organize each slide around one central message, express it in a concise title, and support it with relevant evidence. One message does not mean one visual object: two coordinated graphs may be needed to support a comparison. Titles must preserve the strength and uncertainty of the evidence; for example, “These results are consistent with…” may be appropriate when causation is not established. Use readable text, purposeful visuals and supporting notes, and retain citations and editable PowerPoint objects.
-
-The approach draws on these sources:
-
-- [Naegle (2021), *Ten simple rules for effective presentation slides*](https://pmc.ncbi.nlm.nih.gov/articles/PMC8638955/) recommends one central idea per slide as practical guidance.
-- [Mayer (2020), *Multimedia Learning*, third edition](https://doi.org/10.1017/9781316941355) discusses segmenting multimedia instruction. Applying this to presenter-paced slides is an adaptation; it does not prove a universal one-idea-per-slide rule.
-- [Sweller, van Merriënboer and Paas (2019), *Cognitive Architecture and Instructional Design: 20 Years Later*](https://doi.org/10.1007/s10648-019-09465-5) explain how limited working memory and unnecessary processing demands can impair learning.
-- [Garner and Alley (2013), *How the Design of Presentation Slides Affects Audience Comprehension*](https://www.ijee.ie/articles/Vol29-6/23_ijee2791ns.pdf) found better comprehension and delayed recall for assertion–evidence slides in a study of 110 engineering students. The compared designs differed in several features, so the results cannot be attributed to headlines alone.
-- [Fiorella and Mayer (2021), *Principles for Reducing Extraneous Processing in Multimedia Learning*](https://doi.org/10.1017/9781108894333.019) discuss excluding irrelevant material, signaling important information and placing related words and graphics together.
-
-These references inform the editorial approach; they do not establish that PPTimistic itself improves learning. A person or agent authors the content and selects its layout. Automated checks can flag issues such as estimated overflow and missing source references, but they cannot determine whether a slide communicates one idea or whether a source supports a claim. Scientific and visual review remain necessary.
-
-For a real presentation, complete `projects/<name>/presentation-brief.md` with the user or agent to establish audience, purpose, evidence, visual preferences and delivery context. New projects include a blank brief; setup does not interview you or validate its answers. Use the [initialization and editorial review checklist](docs/workflows.md#initialize-the-presentation-brief) before delivery. The built-in chart layout supports one editable vertical-bar chart per slide; it does not currently create a two-chart comparison layout. See [limitations](docs/limitations.md).
-
-## Collaborate in a browser
-
-After creating a project, run `npm run session -- --project research-talk --port 0` to open a local shared studio. The command prints owner, editor and reviewer invitations. Collaborators can edit native slide objects, comment, and export a PowerPoint; an optional local agent adapter can propose changes. No agent or paid service is enabled by default. See the [session guide](docs/session.md) for roles, private-network access, the adapter protocol and collaboration limits.
-
-The studio's experimental preview of an existing PowerPoint has narrower support: selected text can be edited, but its original non-text objects are not editable and exporting those edits back to PowerPoint is not yet supported. Browser previews approximate PowerPoint rendering.
-
-## First presentation
-
-Install Node.js **22.13 or later** before running the commands below.
-
-### Create your own repository from the template
-
-On GitHub, choose **[Use this template → Create a new repository](https://github.com/new?template_name=PPTimistic&template_owner=dhuzard)**. GitHub creates a new repository under your account, independent of the PPTimistic upstream repository.
-
-Clone the repository you just created, then run setup inside it:
+**Requirement:** Node.js 22.13+ and npm. You may [create a repository from this GitHub template](https://github.com/new?template_name=PPTimystic&template_owner=dhuzard), or clone the [PPTimystic source](https://github.com/dhuzard/PPTimystic).
 
 ```sh
-git clone https://github.com/YOUR-ACCOUNT/YOUR-REPOSITORY.git
-cd YOUR-REPOSITORY
+git clone https://github.com/dhuzard/PPTimystic.git
+cd PPTimystic
 npm install
-npm run setup
+npm run new -- --project my-talk --inputs "path/to/sources" --no-render
 ```
 
-### Clone the upstream repository
+The **interactive** setup first asks for the title, languages and visual theme, then runs a **mandatory creator interview**. It collects the creator's profile and working preferences, the desired audience outcome, prior knowledge, key message, format/duration, content scope, evidence, caveats, tone, visuals and constraints. The creator reviews the summary and must explicitly approve it.
 
-To work from a local clone of the upstream project instead, run:
+The new project is then ready for slide authoring. **It does not turn imported documents into an AI-written presentation or silently export a fictional deck.** A person or coding agent must author `projects/my-talk/content/slides.yaml` based on the approved brief and sources.
 
 ```sh
-git clone https://github.com/dhuzard/PPTimistic.git pptimistic
-cd pptimistic
-npm install
-npm run setup
+npm run brief -- --project my-talk --check    # Confirm the onboarding gate is open
+npm run build -- --project my-talk            # Generate editable PowerPoint
+npm run validate -- --project my-talk         # Check source, slides and outputs
+npm run render -- --project my-talk           # Optional; needs a local renderer
+npm run bundle -- --project my-talk           # Verified delivery package
 ```
 
-Open the folder in VS Code if you want to work with Codex or Claude Code. Setup asks five questions: title, source language, output languages, visual preset and an optional documents folder. Press Enter to accept defaults. The wizard offers English and French; force French with `npm run setup -- --ui fr`.
+PowerPoint files are written to `projects/my-talk/output/presentation.<locale>.pptx`. Source documents stay local, with hashes and extraction records. The output requires substantive scientific and visual review; automated checks do not prove that the evidence supports a claim.
 
-Setup creates a new project and exports a five-slide demonstration. Without a project name, rerunning setup creates another numbered folder. Explicit names are never overwritten. For an unattended first run:
+### Running without an interactive terminal
+
+`--yes` **never approves a real presentation**. It creates a draft that cannot be built or exported until a creator completes and approves the brief in an interactive terminal:
 
 ```sh
-npm run setup -- --yes --project my-talk --no-render
+npm run new -- --project my-talk --yes --inputs "path/to/sources" --no-render
+npm run brief -- --project my-talk            # Creator interview and approval
+npm run brief -- --project my-talk --check
 ```
 
-Open `projects/my-talk/output/presentation.en-US.pptx` or `presentation.fr-FR.pptx`. Titles, paragraphs, diagram shapes, arrows and the example chart are editable. The chart contains **fictional demonstration data**. Preview generation is optional and uses installed local tools.
+To review a manually edited `presentation-brief.yaml`, use `npm run brief -- --project my-talk --approve`. Editing any approved answer invalidates its content fingerprint and reopens the gate until approval is renewed. The separate `presentation-brief.md` is for supplemental notes, **not** validated consent.
 
-To start from your documents instead, create a separate project. This imports and retains files locally; it does not summarize them:
+For question-by-question guidance, commands and troubleshooting, see [Creator onboarding](docs/onboarding.md). Existing legacy projects remain usable; the enforced gate is enabled for newly created real projects.
+
+## Try the fictional demo
+
+Want to see the toolkit before creating a real presentation?
 
 ```sh
-npm run new -- --project research-talk --inputs "path/to/plan-folder" --from-plan --locales en-US --yes
-npm run translate -- --project research-talk --to fr-FR
-# Complete every translation in the YAML request named in the command output, then:
-npm run translate -- --project research-talk --to fr-FR --file "path/to/completed-request.yaml"
-npm run build -- --project research-talk
-npm run validate -- --project research-talk
-npm run render -- --project research-talk # optional; PPTX creation does not depend on a renderer
-npm run bundle -- --project research-talk
+npm run demo -- --project demo --no-render
+npm run session -- --project demo --port 0
 ```
 
-## Your own presentation
+This creates a five-slide English/French example with **fictional chart data**, not a real research presentation. Unattended `npm run setup -- --yes` with no source documents is also a demo-only path. Use `npm run new` for real work.
+
+![Five fictional demo slides](docs/demo-contact-sheet.png)
+
+## Presentations and source material
+
+Create a project with `--inputs "path/to/folder"` to retain local source documents. Supported extraction includes text-based PDFs, DOCX paragraphs, Markdown/TXT and CSV; images are retained as assets. Extraction is **not** scientific interpretation. Your agent must use the approved brief, inspect the evidence and clearly mark missing support.
+
+To import a literal Markdown slide plan (one file with `##` headings), use:
 
 ```sh
-npm run new -- --project research-talk --inputs "path/to/documents" --yes
-npm run build -- --project research-talk
-npm run validate -- --project research-talk
-npm run render -- --project research-talk
+npm run new -- --project planned-talk --inputs "path/to/plan-folder" --from-plan --source en-US --locales en-US --yes
+npm run brief -- --project planned-talk
+npm run build -- --project planned-talk
 ```
 
-`npm run validate -- --project research-talk --source-only` checks source content and layout without checking generated PowerPoint files.
+`--from-plan` preserves heading order and copies text, but does not synthesize results or improve poor slide density. Long text may fail validation. Use `npm run claims -- --project my-talk` for optional source-to-claim provenance checks; they verify links/hashes, not scientific truth.
 
-Documents are copied locally and extracted with provenance. **Importing research documents does not automatically summarize them.** Until you or your agent authors the slide content, the deck remains an explicitly fictional demo. Tell your agent:
-
-> Create this presentation from projects/research-talk/inputs. Use the supplied sources, preserve the slide plan order, flag missing evidence, and write concise slide content and presenter notes. Generate French and English outputs, validate them, then render previews.
-
-For direct Markdown import, use `examples/slide-plan.md` as a guide. Each `##` heading becomes a slide; its text is copied verbatim, without scientific rewriting:
+## Review and collaborate
 
 ```sh
-npm run new -- --project planned-talk --yes --inputs "path/to/plan-folder" --from-plan --locales en-US
+npm run session -- --project my-talk --port 0
 ```
 
-Large blocks of text fail layout validation instead of being silently shrunk. An agent can refine the source with your editorial approval.
+The shared local studio prints distinct owner, editor and reviewer invitation URLs. Participants can edit native slide objects, comment and propose revisions. **An unapproved real project cannot be exported**, including through the studio. The optional local agent adapter needs explicit configuration and is off by default. See [sessions](docs/session.md).
 
-For claims that need a precise source trail, add an optional `claims` entry linking a visible slide field to an excerpt from an ingested document, then run `npm run claims -- --project research-talk`. The local report shows the source ID, path, hash, locator and review issues without printing the excerpt itself. See the [claim schema](docs/architecture.md). A matching excerpt still needs human scientific review.
-Use `npm run claims -- --project research-talk --write-markdown` for a local `output/claims-report.md` with links to retained source files and explicit source/extraction hash states. The report includes slide text and paths, so treat it as private.
-
-For a nonfictional editable chart, ingest a CSV and explicitly bind its source hash, columns and rows in slide YAML. The chart and its embedded workbook receive the selected values directly; changed CSV bytes block a rebuild until reviewed. See the [chart binding schema](docs/architecture.md).
+A reviewed presentation should communicate one central message per slide without losing evidence qualifications. Titles must not overstate causal claims, and more than one coordinated visual may be useful. Sources on slide design include [Naegle (2021)](https://pmc.ncbi.nlm.nih.gov/articles/PMC8638955/), [Mayer (2020)](https://doi.org/10.1017/9781316941355), [Sweller et al. (2019)](https://doi.org/10.1007/s10648-019-09465-5) and [Garner & Alley (2013)](https://www.ijee.ie/articles/Vol29-6/23_ijee2791ns.pdf). They inform editorial practice but do **not** establish that PPTimistic itself improves learning.
 
 ## Illustrations, translations and revisions
 

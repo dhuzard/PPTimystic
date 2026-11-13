@@ -45,6 +45,7 @@ export interface SessionSnapshot {
   comments: Comment[]; jobs: AgentJob[]; presence: Presence[]; locks: ObjectLock[];
   history: HistoryEntry[]; texts: Record<string, TextState>; agentConfigured: boolean;
   exportBlocked?: boolean;
+  briefReady?: boolean;
   issues: { severity: string; code: string; message: string; slide?: string; locale?: string }[];
 }
 /** Yjs documents contain exactly one plain Y.Text named `text`. */
