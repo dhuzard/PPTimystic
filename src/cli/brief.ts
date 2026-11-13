@@ -64,14 +64,6 @@ export async function interviewCreator(dir: string, config: Project, fr: boolean
   // No approval is inherited when answers change.
   await saveCreatorBrief(dir, draft);
   console.log('\n' + briefingSummary(draft));
-  const accepted = await confirm({
-    message: fr ? 'Validez-vous ce brief comme base de création ?' : 'Do you approve this brief as the basis for the presentation?',
-    default: false,
-  });
-  if (!accepted) {
-    console.log(fr ? 'Brief conservé comme brouillon. Génération bloquée.' : 'Brief saved as draft. Generation remains blocked.');
-    return false;
-  }
   await approveInteractively(dir, config, fr, draft);
   return true;
 }
