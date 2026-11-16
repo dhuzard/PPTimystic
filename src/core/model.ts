@@ -46,6 +46,27 @@ export const nativeTextSchema = z.object({
     runs: z.array(nativeTextRunSchema).min(1), binding: z.enum(['title', 'message']).optional()
   }).strict())
 }).strict();
+// Entrance animations are opt-in presentation metadata. They never change
+// geometry or wording; the build writes native PowerPoint timing for them.
+export const animationEffects = ['fade', 'appear', 'wipe', 'fly-in'] as const;
+export const animationDirections = ['left', 'right', 'top', 'bottom'] as const;
+export const animationTriggers = ['on-click', 'with-previous', 'after-previous'] as const;
+export const animationSettingsSchema = z.object({
+  effect: z.enum(animationEffects).optional(),
+  direction: z.enum(animationDirections).optional(),
+  trigger: z.enum(animationTriggers).optional(),
+  duration: z.number().finite().min(0.05).max(20).optional(),
+  delay: z.number().finite().min(0).max(60).optional()
+}).strict();
+export const animationStepSchema = animationSettingsSchema.extend({
+  targets: z.array(z.string().regex(/^[A-Za-z][A-Za-z0-9_-]*$/)).min(1),
+  group: z.boolean().optional()
+}).strict();
+export const slideAnimationsSchema = animationSettingsSchema.extend({
+  enabled: z.boolean().optional(),
+  steps: z.array(animationStepSchema).min(1).optional()
+}).strict();
+export const projectAnimationsSchema = animationSettingsSchema.extend({ enabled: z.boolean().optional() }).strict();
 export const slideSchema = z.object({
   id: z.string().regex(/^[A-Za-z][A-Za-z0-9_-]*$/),
   layout: z.enum(layouts), status: z.enum(['draft', 'review', 'approved', 'locked']).default('draft'),
@@ -56,6 +77,7 @@ export const slideSchema = z.object({
   native_text: nativeTextSchema.optional(),
   objects: z.array(customObjectSchema).optional(),
   visual_objects: z.record(z.string().regex(/^[A-Za-z][A-Za-z0-9_-]*$/), visualObjectOverrideSchema).optional(),
+  animations: slideAnimationsSchema.optional(),
   visual: z.object({ asset: z.string().optional(), brief: z.string().default(''), accepted: z.boolean().default(false), decorative: z.boolean().optional() }).strict().optional(),
   chart: z.object({
     fictional: z.boolean().default(false), data_ref: z.string().optional(),
@@ -74,7 +96,8 @@ export const projectSchema = z.object({
   content: z.string().default('content/slides.yaml'), font: z.string().optional(),
   // Old projects remain compatible; newly created real projects set this to true.
   brief_required: z.boolean().default(false),
-  glossary: z.array(z.string()).default([])
+  glossary: z.array(z.string()).default([]),
+  animations: projectAnimationsSchema.optional()
 }).strict();
 export const themeSchema = z.object({
   name: z.string(), background: z.string().regex(/^[A-Fa-f0-9]{6}$/),
@@ -89,3 +112,6 @@ export type Localized = z.infer<typeof localizedSchema>;
 export type Project = z.infer<typeof projectSchema>;
 export type Theme = z.infer<typeof themeSchema>;
 export type Deck = z.infer<typeof deckSchema>;
+export type AnimationSettings = z.infer<typeof animationSettingsSchema>;
+export type SlideAnimations = z.infer<typeof slideAnimationsSchema>;
+export type ProjectAnimations = z.infer<typeof projectAnimationsSchema>;

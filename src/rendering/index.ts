@@ -49,7 +49,7 @@ export async function renderProject(name:string,locale?:string,renderer='auto') 
   const freshnessIssues = artifactIssues(artifacts);
   if (freshnessIssues.length) throw new Error(freshnessIssues.map(i => `${i.locale}: ${i.message}`).join('\n'));
   const folders:string[]=[];
-  const slideStates=await fingerprints(dir,source,theme);
+  const slideStates=await fingerprints(dir,source,theme,config.animations);
   for (const lang of locale?[locale]:config.output_locales) {
     const artifact = artifacts.find(a => a.locale === lang)!;
     const deck=await safePath(dir,`output/presentation.${lang}.pptx`);

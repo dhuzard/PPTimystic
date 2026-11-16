@@ -144,7 +144,7 @@ projectOption(cli.command('validate').description('Validate source, translations
   for(const locale of config.output_locales) {
     const p=new PptxGenJS();p.layout='LAYOUT_WIDE';
     for(const [i,s] of deck.slides.entries()) if(s.content[locale]) {
-      try {issues.push(...validateGeometry(await drawSlide(p,s,s.content[locale],theme,locale,dir,i)));}
+      try {issues.push(...validateGeometry(await drawSlide(p,s,s.content[locale],theme,locale,dir,i,{animations:config.animations})));}
       catch(e) {issues.push({severity:'error',code:'render-object',slide:s.id,locale,message:(e as Error).message});}
     }
     if (!o.sourceOnly) {

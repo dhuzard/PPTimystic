@@ -90,6 +90,10 @@ npm run build -- --project recherche
 Une traduction manquante bloque l'export de cette langue. Les nombres, unités, DOI et termes protégés du glossaire sont contrôlés. La fidélité scientifique doit être relue par une personne compétente.
 Pour un graphique fictif dans une autre langue que le français ou l'anglais, renseignez `fictionalNotice` avec une mention explicite et relue dans cette langue ; sinon, la compilation s'arrête.
 
+## Animations
+
+Par défaut, les diapositives sont statiques. Demandez des animations à votre agent en décrivant l'effet et où l'appliquer, ou ajoutez `animations: {}` à `project.yaml`. Chaque élément apparaît alors en fondu au clic. Dans les schémas et processus, chaque bloc, son libellé et sa flèche sont groupés et apparaissent ensemble. Chaque diapositive peut choisir `fade`, `appear`, `wipe` ou `fly-in`, une direction, un déclencheur, une durée, un ordre explicite, ou s'exclure. Les animations PowerPoint produites restent natives et modifiables. Voir la [documentation des animations](docs/architecture.md#animations).
+
 ## Donner un retour
 
 ```sh

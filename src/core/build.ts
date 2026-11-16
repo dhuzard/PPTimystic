@@ -5,8 +5,9 @@ import { atomicWrite, exists, hash, hashFile, loadProject, readYaml, safePath, s
 import { resolveChartData } from '../content/chart-data.js';
 import { drawSlide, validateGeometry } from '../layouts/index.js';
 import { finalizeAccessibility } from '../layouts/accessibility.js';
+import { animationsEnabled, finalizeAnimations } from '../layouts/animations.js';
 import { validateContent, validatePptx, type Issue } from '../validation/index.js';
-import type { Deck, Project, Theme } from './model.js';
+import type { Deck, Project, ProjectAnimations, Theme } from './model.js';
 
 export type BuildProvenance = { chartSelections?:Record<string,Awaited<ReturnType<typeof resolveChartData>>['selection']>; buildId:string; locale:string; pptxSha256:string; sourceFingerprint:string; sources:Record<string,string>; sourceRecords:Record<string,{path:string; sha256:string; recordedSha256:string; extracted?:{path:string; sha256:string; recordedSha256:string}}> ; assets:Record<string,{path:string; sha256:string}>; prompts:Record<string,{path:string; sha256:string; role:'preparation-or-reuse'; generationProvenance:'unavailable'}> };
 export type BuildState = { version?:2; files: Record<string,string>; slides: Record<string,{ fingerprint:string; protected:boolean; acceptedAsset?:{path:string; sha256:string}; acceptedAssets?:Record<string,{path:string; sha256:string}>; locales: Record<string,{ fingerprint:string; protected:boolean }> }>; provenance?:Record<string,BuildProvenance> };
@@ -48,7 +49,8 @@ export async function sourceFingerprint(dir:string, config:Project, deck:Deck, t
   const configFingerprint = config.brief_required ? config : legacyConfig;
   return hash(JSON.stringify({config:configFingerprint,theme,locale,slides,sourceEvidence:await sourceEvidence(dir,deck),...(config.brief_required?{briefHash}:{})}));
 }
-export async function fingerprints(dir: string, deck: Awaited<ReturnType<typeof loadProject>>['deck'], theme: unknown) {
+/** `projectAnimations` is the deck-wide default; it joins a slide fingerprint only when it applies to that slide. */
+export async function fingerprints(dir: string, deck: Awaited<ReturnType<typeof loadProject>>['deck'], theme: unknown, projectAnimations?: ProjectAnimations) {
   const result: BuildState['slides']={};
   for (const s of deck.slides) {
     const assetPath = s.visual?.asset ? await safePath(dir,s.visual.asset) : undefined;
@@ -56,7 +58,8 @@ export async function fingerprints(dir: string, deck: Awaited<ReturnType<typeof 
     const { content, status, locked, ...shared }=s;
     const objectAssets=await customAssetEvidence(dir,s);
     const acceptedAssets=Object.fromEntries((s.objects??[]).filter(object=>object.type==='image' && object.accepted).map(object=>[object.id,objectAssets[object.id]]));
-    const base={shared,theme,asset,...(Object.keys(objectAssets).length ? {objectAssets} : {})};
+    const inherited=projectAnimations && animationsEnabled(s,projectAnimations) ? {projectAnimations} : {};
+    const base={shared,theme,asset,...(Object.keys(objectAssets).length ? {objectAssets} : {}),...inherited};
     result[s.id]={fingerprint:hash(JSON.stringify(base)),protected:locked||status==='approved'||status==='locked',
       ...(s.visual?.accepted && s.visual.asset ? {acceptedAsset:{path:s.visual.asset,sha256:asset}} : {}),
       ...(Object.keys(acceptedAssets).length ? {acceptedAssets} : {}),
@@ -93,8 +96,8 @@ export async function loadProtectionBaseline(dir:string):Promise<{state:BuildSta
     if (buildId && /^[A-Za-z0-9-]+$/.test(buildId)) {
       const snapshot=path.join(output,'history',buildId,'source.snapshot.json');
       if (await exists(snapshot)) {
-        const old=JSON.parse(await fs.readFile(snapshot,'utf8')) as {deck:Deck; theme:Theme};
-        const recovered=await fingerprints(dir,old.deck,old.theme);
+        const old=JSON.parse(await fs.readFile(snapshot,'utf8')) as {config?:Project; deck:Deck; theme:Theme};
+        const recovered=await fingerprints(dir,old.deck,old.theme,old.config?.animations);
         for (const [id,slide] of Object.entries(recovered)) {
           if (slide.acceptedAsset && previous.slides[id] && !previous.slides[id].acceptedAsset) {
             previous.slides[id].acceptedAsset={...slide.acceptedAsset,sha256:slide.fingerprint===previous.slides[id].fingerprint ? slide.acceptedAsset.sha256 : '<unverifiable>'};
@@ -114,7 +117,7 @@ export async function buildProject(name: string, options: {locale?:string; autho
   await fs.mkdir(output,{recursive:true});
   const stateFile=path.join(output,'build-state.json');
   const {state:previous,legacyUnverifiable}=await loadProtectionBaseline(dir);
-  const next=await fingerprints(dir,deck,theme);
+  const next=await fingerprints(dir,deck,theme,config.animations);
   const issues: Issue[]=await validateContent(dir,config,deck,theme,locales);
   if (legacyUnverifiable) for (const [id,old] of Object.entries(previous?.slides??{})) if ((!next[id] || next[id].fingerprint!==old.fingerprint) && !options.authorize?.includes(id)) issues.push({severity:'error',code:'protected-slide',message:`${id}: legacy image protection baseline is unavailable and shared slide content changed. Explicitly authorize it with --authorize ${id}.`});
   for (const message of protectionIssues(previous,next,options.authorize??[])) issues.push({severity:'error',code:'protected-slide',message});
@@ -168,13 +171,14 @@ export async function buildProject(name: string, options: {locale?:string; autho
       pptx.layout='LAYOUT_WIDE'; pptx.author='PPTimistic'; pptx.subject='Source-driven, editable presentation'; pptx.title=config.title;
       pptx.theme={headFontFace:theme.font,bodyFontFace:theme.font};
       for (const [index,model] of deck.slides.entries()) {
-        const g=await drawSlide(pptx,model,model.content[locale],theme,locale,dir,index);
+        const g=await drawSlide(pptx,model,model.content[locale],theme,locale,dir,index,{animations:config.animations});
         geometry.push(g); issues.push(...validateGeometry(g));
       }
       if (issues.some(i=>i.severity==='error')) break;
       const file=path.join(staging,`presentation.${locale}.pptx`);
       await pptx.writeFile({fileName:file,compression:true});
       await finalizeAccessibility(file,geometry.filter(slide=>slide.locale===locale));
+      await finalizeAnimations(file,geometry.filter(slide=>slide.locale===locale));
       await validatePptx(file,deck.slides.length);
     }
     await atomicWrite(path.join(output,'validation.json'),JSON.stringify(issues,null,2));

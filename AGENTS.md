@@ -23,6 +23,10 @@ Inspect user-supplied references before claiming style analysis. Record palette,
 
 Separate interface, source and output languages. Use canonical BCP 47 identifiers. Localized slide IDs remain identical; language-neutral assets are shared. Translate titles, visible text, notes, labels, captions and alt descriptions. Preserve numbers, units, DOI, notation, citations and glossary terms. Missing translations must be explicit; no source-language fallback disguised as a translation. Check reflow and scientific fidelity.
 
+## Animations
+
+Animations are opt-in. Add them only when the creator asks, and translate their description into `animations` in `project.yaml` (deck-wide) or on a slide (see `docs/architecture.md`). When no effect is named, use the default fade-in on click. Keep each workflow/diagram box, label and arrow grouped so they appear together. Ask before an animation choice would hide evidence qualifications, sources or a fictional-data disclosure. Animation changes to approved/locked slides need explicit authorization like any other change.
+
 ## Feedback, protection and completion
 
 Log user feedback by stable slide ID and category. Approved/locked slides, locked translations and accepted images require explicit user authorization before changes; `--authorize ID` records that authority but does not obtain it. Do not infer authorization from a wish to rebuild. Preserve unchanged content and assets. General theme requests affecting approved content also need approval. Back up sources before revisions and preserve output history. Never override an externally modified PPTX; retain a copy, reconcile its edits into YAML with an agent, and obtain editorial approval where meaning is uncertain.

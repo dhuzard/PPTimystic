@@ -150,6 +150,45 @@ source_refs: [SRC-your-ingested-csv-id]
 
 Column names and rows are selected explicitly; the original CSV bytes must match the recorded hash. PowerPoint chart data and its embedded editable workbook use the selected values directly, without computed transformations. Replacing or re-ingesting a changed CSV does not silently approve new chart values: review the data selection and update `source_sha256` deliberately. The source-language category and series labels are checked against the CSV, while translated labels remain positionally aligned and need human scientific review.
 
+### Animations
+
+Animations are off unless requested. They are written as native PowerPoint entrance effects, so presenters can still edit them in the Animation Pane. They never change wording, geometry or translations. Enable them for the whole deck in `project.yaml`:
+
+```yaml
+animations: {}            # fade in each item on click (the default)
+# animations: { effect: wipe, direction: left, trigger: on-click, duration: 0.6 }
+```
+
+Or enable, tune or disable them for a single slide in `slides.yaml`. A slide setting overrides the project setting:
+
+```yaml
+animations: { enabled: false }   # this slide stays static
+```
+
+Settings are `effect` (`fade` (default), `appear`, `wipe`, `fly-in`), `direction` for `wipe`/`fly-in` (`left`, `right`, `top`, `bottom` (default)), `trigger` (`on-click` (default), `with-previous`, `after-previous`), `duration` in seconds (default 0.5) and `delay` in seconds (default 0).
+
+Without `steps`, each layout uses an automatic reveal order. The title, footer, citations and accent decorations stay visible. The message, body, illustration, caption and comparison columns enter one at a time. In `workflow` and `diagram` slides, each node's box, label and incoming arrow become **one PowerPoint group** that fades in as a unit. A fictional chart always enters together with its disclosure. Overlapping added objects enter together, and an added box with text inside it becomes a group.
+
+To describe a specific sequence, list `steps`. Each step names scene roles (as used in `visual_objects`, or `object-<UUID>` IDs) that enter together. Any role not listed stays static:
+
+```yaml
+animations:
+  effect: fade
+  steps:
+    - targets: [message]
+      effect: fly-in
+      direction: left
+    - targets: [decoration-1, node-0]   # box + label
+      group: true                       # also make them one PowerPoint group
+    - targets: [connector-0, decoration-2, node-1]
+      group: true
+      trigger: after-previous
+      delay: 0.3
+    - targets: [body]
+```
+
+Only the first object of a step uses the step's trigger; the rest start with it. Validation rejects unknown, hidden or repeated targets. It also rejects animating the footer or citations, grouping the title or a chart, and revealing a fictional disclosure after its chart. `geometry.json` records the effective plan for each slide. Animation settings are shared, language-neutral slide content. Changing them on an approved or locked slide, including through a new deck-wide default that reaches that slide, requires `--authorize`.
+
 ## Validation and rebuilds
 
 Validation rejects duplicate IDs, missing original/target text, unknown or altered sources, missing referenced assets, inconsistent chart labels, invalid language tags, inadequate theme text contrast, probable text overflow, unexpected object intersections and off-slide geometry. It checks ZIP/XML structure, internal relationships, slide count and native text in produced PPTX files. Font consistency is controlled by a single theme; citation/footer text has an intentional 10 pt exception. These checks do not establish scientific truth or guarantee PowerPoint layout under every font substitution.

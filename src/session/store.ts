@@ -141,7 +141,7 @@ export class SessionStore extends EventEmitter {
   }
   private async scene(slide: Slide, locale: string) {
     const key = `${locale}:${hash(JSON.stringify(slide))}`;
-    if (!this.scenes.has(key)) this.scenes.set(key, await buildSlideScene(slide, slide.content[locale], this.loaded.theme, locale, this.loaded.dir, this.loaded.deck.slides.findIndex(s => s.id === slide.id), {allowMissingTranslations:true}));
+    if (!this.scenes.has(key)) this.scenes.set(key, await buildSlideScene(slide, slide.content[locale], this.loaded.theme, locale, this.loaded.dir, this.loaded.deck.slides.findIndex(s => s.id === slide.id), {allowMissingTranslations:true,animations:this.loaded.config.animations}));
     return this.scenes.get(key)!;
   }
   private async object(slide: Slide, locale: string, objectId?: string): Promise<SceneObject> {
@@ -400,7 +400,7 @@ export class SessionStore extends EventEmitter {
       if (visualChanged || customChanged) fail(403, `${id}: changing accepted image properties or placement requires explicit owner authorization.`);
     }
     const { state: baseline, legacyUnverifiable } = await loadProtectionBaseline(this.loaded.dir);
-    const next = await fingerprints(this.loaded.dir, deck, this.loaded.theme);
+    const next = await fingerprints(this.loaded.dir, deck, this.loaded.theme, this.loaded.config.animations);
     const knownAuthorized = [...new Set([...this.metadata.authorized, ...authorized])];
     const problems = protectionIssues(baseline, next, knownAuthorized);
     if (problems.length || legacyUnverifiable && ids.some(id => baseline?.slides[id] && !knownAuthorized.includes(id)))
