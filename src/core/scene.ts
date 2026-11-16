@@ -2,7 +2,8 @@ import PptxGenJS from 'pptxgenjs';
 import sharp from 'sharp';
 import { safePath } from './io.js';
 import { composeSlide, WIDTH, HEIGHT, type SlideGeometry } from '../layouts/index.js';
-import type { Slide, Localized, Theme } from './model.js';
+import type { Slide, Localized, Theme, ProjectAnimations } from './model.js';
+import { customObjectUnits, planSlideAnimation } from '../layouts/animations.js';
 
 export type SceneBinding = { field: 'title'|'message'|'body'|'caption'|'labels'; index?: number } | { field: 'visual.asset' } | { field: 'objects'; id: string; property: 'text'|'alt' };
 export type SceneObject = {
@@ -29,7 +30,7 @@ function bindingFor(role: string, model: Slide, c: Localized): SceneBinding | un
 }
 
 /** Build the same native-object composition used for PowerPoint without modifying source content. */
-export async function buildSlideScene(model: Slide, c: Localized, theme: Theme, locale: string, dir: string, index: number, options: { allowMissingTranslations?: boolean } = {}): Promise<SlideScene> {
+export async function buildSlideScene(model: Slide, c: Localized, theme: Theme, locale: string, dir: string, index: number, options: { allowMissingTranslations?: boolean; animations?: ProjectAnimations } = {}): Promise<SlideScene> {
   const objects: SceneObject[] = [];
   let notes = '';
   const add = (type: SceneObject['type'], options: Record<string, any>, data?: unknown, shape?: string) => {
@@ -102,6 +103,10 @@ export async function buildSlideScene(model: Slide, c: Localized, theme: Theme, 
     return o ? { ...box, x: o.x ?? box.x, y: o.y ?? box.y, w: o.w ?? box.w, h: o.h ?? box.h, font: o.style?.fontSize ?? box.font } : box;
   });
   if (geometry.accessibility) geometry.accessibility = geometry.accessibility.filter(item => objects.some(object => object.id === item.key));
+  const customIds = new Set((model.objects ?? []).map(object => object.id));
+  geometry.units = [...(geometry.units ?? []), ...customObjectUnits(objects.filter(object => customIds.has(object.role)))];
+  const animation = planSlideAnimation(model, options.animations, objects, geometry.units);
+  if (animation) geometry.animation = animation;
   for (const object of objects) if (object.type==='image') {
     const data=String(object.options.data);
     const image=await sharp(Buffer.from(data.slice(data.indexOf(',')+1),'base64')).metadata();

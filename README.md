@@ -110,6 +110,10 @@ Feedback is logged for your coding agent; the CLI does not pretend to interpret 
 
 For local delivery, run `npm run bundle -- --project research-talk`. It verifies current PPTX files and creates `output/deliveries/<id>/` with the decks, validation results and a hash manifest. Add `--previews latest` to include current rendered previews. Original inputs are excluded unless you name each file with `--input inputs/filename`; inspect the bundle before sharing it.
 
+## Animations
+
+Builds are static by default. Ask your agent for animations, describing the effect and where it should apply, or add `animations: {}` to `project.yaml`. Each item then fades in on click. In workflow and diagram slides, each box, its label and its arrow are grouped and appear together. Slides can choose `fade`, `appear`, `wipe` or `fly-in`, a direction, a trigger, timing and an explicit order, or opt out. The output uses native PowerPoint animations that remain editable. See [animations](docs/architecture.md#animations).
+
 ## Continuous integration previews
 
 GitHub Actions checks Node 22.13 and 24 on Linux, macOS and Windows. The Linux Node 22.13 job renders the public typography fixture and uploads only its preview images and `qa-manifest.json` for seven days. The manifest records renderer, locale, theme, slide IDs and images still needing human inspection; CI does not claim visual or screen-reader inspection.
