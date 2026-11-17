@@ -26,6 +26,7 @@ cli.hook('preAction',async (_root,command)=>{
 });
 const defaults=projectSchema.parse({title:'PPTimistic',...await readYaml(path.join(root,'config/defaults.yaml'))});
 const language=(value?:string) => (value??process.env.LC_ALL??process.env.LANG??Intl.DateTimeFormat().resolvedOptions().locale).toLowerCase().startsWith('fr')?'fr':'en';
+const themePresets=['editorial-minimal','scientific-technical','illustrated-minimal','ink-watercolor'];
 const split=(s:string)=>s.split(',').map(s=>s.trim()).filter(Boolean);
 function projectOption(c:Command) {
   c.argument('[projectName]','Project folder under projects/ (also accepted when npm drops --project)')
@@ -46,7 +47,7 @@ for (const command of ['setup','new','demo']) {
     .option('--title <text>','Presentation title','PPTimistic')
     .option('--source <locale>','Original content language',defaults.source_locale)
     .option('--locales <list>','Comma-separated output languages',defaults.output_locales.join(','))
-    .option('--theme <name>','editorial-minimal, scientific-technical, illustrated-minimal',defaults.theme)
+    .option('--theme <name>',themePresets.join(', '),defaults.theme)
     .option('--inputs <folder>','Local folder of source documents')
     .option('--from-plan','Import exactly one Markdown plan, using ## headings as slide titles')
     .option('--ui <language>','CLI interface language: en or fr')
@@ -68,13 +69,13 @@ for (const command of ['setup','new','demo']) {
         title=await input({message:fr?'Titre de la présentation':'Presentation title',default:title});
         source=await select({message:fr?'Langue du contenu original':'Original content language',choices:[{name:'English',value:'en-US'},{name:'Français',value:'fr-FR'}],default:source});
         locales=await input({message:fr?'Langues de sortie (séparées par des virgules)':'Output languages (comma-separated)',default:locales});
-        theme=await select({message:fr?'Style visuel':'Visual preset',choices:['editorial-minimal','scientific-technical','illustrated-minimal'].map(value=>({name:value,value})),default:theme});
+        theme=await select({message:fr?'Style visuel':'Visual preset',choices:themePresets.map(value=>({name:value,value})),default:theme});
         inputs=await input({message:fr?'Dossier de documents (facultatif)':'Document folder (optional)',default:inputs??''});
       }
       localeSchema.parse(source); const outputs=split(locales).map(l=>localeSchema.parse(l));
       // Validate settings before creating any directory.
       if (!['en-US','fr-FR'].includes(source)) throw new Error('The starter supports en-US/fr-FR. Other languages can be authored manually after setup.');
-      if (!['editorial-minimal','scientific-technical','illustrated-minimal'].includes(theme)) throw new Error(`Unknown theme: ${theme}`);
+      if (!themePresets.includes(theme)) throw new Error(`Unknown theme: ${theme}`);
       if (inputs && !(await exists(path.resolve(inputs)))) throw new Error(`Input folder not found: ${path.resolve(inputs)}. Check the path and try again; for a plan, pass its containing folder with --from-plan.`);
       const name=o.project??(command==='demo'?'demo':await availableName('my-presentation'));
       // "demo" and unattended setup without sources remain explicitly fictional.
