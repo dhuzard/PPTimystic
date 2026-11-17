@@ -1,6 +1,6 @@
 # Demo: FAIR data in preclinical research (5-minute workshop)
 
-Materials for the walkthrough in [issue #5](https://github.com/dhuzard/PPTimystic/issues/5) and [video/](../../video/). This folder holds **inputs to** a real PPTimistic project; it is not the project itself. The project, `projects/fair-preclinical`, is created by the creator on camera ([runbook](../../video/recording-runbook.md)), which keeps the mandatory onboarding genuine.
+Materials for the walkthrough video in [issue #5](https://github.com/dhuzard/PPTimystic/issues/5). This folder holds **inputs to** a real PPTimistic project; it is not the project itself. The project, `projects/fair-preclinical`, is created by the creator on camera, which keeps the mandatory onboarding genuine. The video's production files (storyboard, runbook, captions) are kept outside this repository.
 
 | File | Status |
 |---|---|

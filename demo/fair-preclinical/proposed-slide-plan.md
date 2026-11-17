@@ -22,7 +22,7 @@
 2. **HCMO / home-cage-monitoring ontology:** include it only with an authoritative reference you supply. A BioPortal entry exists ("Home Cage Monitoring", namespace `w3id.org/hcm-ontology`), but its scope and maturity have not been reviewed here.
 3. **MNMS wording:** the paper *proposes* MNMS and calls for adoption (Moresis et al. 2024). The slide must not present it as an adopted or mandatory standard.
 4. **GO FAIR screenshot:** use it in the video only (recommended), or also as the S02 image with attribution? Using it in the deck would replace the hand-drawn illustration on that slide.
-5. **Animations:** a fade-in of the sentence, then the illustration, on content slides. This depends on the animation support currently uncommitted in this working tree; see [video/README.md](../../video/README.md).
+5. **Animations:** a fade-in of the sentence, then the illustration, on content slides. Uses PPTimistic's opt-in native animations (see `docs/architecture.md`), which never hide a source or qualification.
 6. **S09 layout:** the existing `statement` layout holds about six reference lines at 24 pt. If more references are kept, they move to the notes and a QR link, or a dedicated references layout is needed.
 
 ## What the tool does vs. what people do

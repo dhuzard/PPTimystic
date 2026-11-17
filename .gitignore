@@ -19,3 +19,6 @@ projects/demo/assets/*
 projects/demo/assets/reference/*
 !projects/demo/assets/reference/idea.svg
 *.review/
+
+# Video production files for the walkthrough stay local
+video/
