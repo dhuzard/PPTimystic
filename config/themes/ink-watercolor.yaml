@@ -1,0 +1,13 @@
+# Dark ink on a muted-pink paper tone, for hand-drawn ink + watercolor illustrations.
+# WCAG contrast on the background: foreground 14.3:1, secondary 7.2:1, accent 6.4:1
+# (on the pale panel: 12.3, 6.2 and 5.5:1).
+name: Ink watercolor
+background: 'F6ECEB'
+foreground: '221D1F'
+secondary: '5A4950'
+accent: '8A3B52'
+pale: 'EED9D8'
+font: Arial
+heading: 36
+body: 24
+margin: 0.75

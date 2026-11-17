@@ -7,7 +7,7 @@ const copy = {
   'it-IT': { fictionalNotice:'Dati fittizi — nessuna inferenza scientifica.', title:'Un messaggio chiaro invita al dialogo', message:'Un’osservazione pratica precisa il contesto.', body:'Una spiegazione più lunga collega questo esempio a una discussione attenta lasciando spazio intorno al testo.', caption:'Valori fittizi usati per verificare l’impaginazione.', alt:'Grafico fittizio con tre categorie e valori 12, 19 e 15.', labels:['Primo esempio','Secondo esempio','Terzo esempio'], seriesNames:['Valori fittizi'] }
 } as const;
 export const fixtureLocales = ['en-US','fr-FR','it-IT'] as const;
-export const fixtureThemes = ['editorial-minimal','illustrated-minimal','scientific-technical'] as const;
+export const fixtureThemes = ['editorial-minimal','illustrated-minimal','scientific-technical','ink-watercolor'] as const;
 export function typographyFixture(): Slide[] {
   return layouts.map((layout,index)=>slideSchema.parse({
     id:`QA${String(index+1).padStart(2,'0')}`,layout,evidence:'conceptual',

@@ -12,6 +12,7 @@ projects/demo/*
 !projects/demo/content/
 projects/demo/content/*
 !projects/demo/content/slides.yaml
+!projects/demo/content/storyline.yaml
 !projects/demo/assets/
 !projects/demo/illustration-style.md
 projects/demo/assets/*

@@ -220,7 +220,7 @@ describe('complete local workflow',()=>{
   });
   test('all nine layouts assemble actual PPTX with every preset',async()=>{
     const source=demoDeck('Layout verification');
-    for(const preset of ['editorial-minimal','scientific-technical','illustrated-minimal']) {
+    for(const preset of ['editorial-minimal','scientific-technical','illustrated-minimal','ink-watercolor']) {
       const theme=themeSchema.parse(YAML.parse(await fs.readFile(path.join(sandbox,`config/themes/${preset}.yaml`),'utf8')));
       const p=new PptxGenJS();p.layout='LAYOUT_WIDE';
       for(const [i,layout] of layouts.entries()) {
