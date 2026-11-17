@@ -30,6 +30,8 @@ Animations are opt-in. Add them only when the creator asks, and translate their 
 
 ## Feedback, protection and completion
 
+For editable slide review, follow `.claude/skills/human-review/SKILL.md` and open the existing native studio. It provides text and image editing, layout controls, comments and history. Use the generic human-review tool for storyline documents and prose. Creator edits saved by the studio are authoritative; use session APIs for agent changes while its project lease is active.
+
 Log user feedback by stable slide ID and category. Approved/locked slides, locked translations and accepted images require explicit user authorization before changes; `--authorize ID` records that authority but does not obtain it. Do not infer authorization from a wish to rebuild. Preserve unchanged content and assets. General theme requests affecting approved content also need approval. Back up sources before revisions and preserve output history. Never override an externally modified PPTX; retain a copy, reconcile its edits into YAML with an agent, and obtain editorial approval where meaning is uncertain.
 
 Original input files, accepted assets, approved content and credentials are protected. Do not commit private projects or outputs (the fictional demo source is public). Never upload, push, publish or change remote repository settings without explicit user authorization.
