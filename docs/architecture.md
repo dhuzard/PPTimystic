@@ -10,6 +10,7 @@ src/content/         source extraction, provenance, literal Markdown plans
 src/layouts/         nine native PowerPoint layouts, geometry records
 src/images/          provider contract, local assets, prompts and metadata
 src/localization/    manual translation requests and consistency checks
+src/story/           storyline roles, read-through, flow prompts, suggestions and review page
 src/feedback/        feedback log and structured source revisions
 src/session/         HTTP/SSE server, shared editor, Yjs text, journal, agent queue
 src/rendering/       LibreOffice/Poppler or Windows PowerPoint rendering

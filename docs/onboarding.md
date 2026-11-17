@@ -70,7 +70,7 @@ Do not add patient information, unpublished confidential content, personal secre
 
 ## After approval
 
-1. Agree on the narrative and slide plan before drafting detailed slides.
+1. Agree on the narrative and slide plan before drafting detailed slides. Record the throughline, story roles, sections and transitions in `content/storyline.yaml` and review the titles-only read-through from `npm run story` (see [storytelling](storytelling.md)).
 2. Ask the agent to author slide text only from the supplied sources and recorded brief. Preserve evidence limits and presenter voice.
 3. Build and validate. Inspect the real presentation (not just the browser approximation); check scientific support, accessibility and legibility.
 4. Discuss feedback and apply changes while preserving protected assets and reviewed content.

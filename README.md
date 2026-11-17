@@ -28,6 +28,7 @@ The new project is then ready for slide authoring. **It does not turn imported d
 ```sh
 npm run brief -- --project my-talk --check    # Confirm the onboarding gate is open
 npm run build -- --project my-talk            # Generate editable PowerPoint
+npm run story -- --project my-talk            # Titles-only read-through and flow prompts
 npm run validate -- --project my-talk         # Check source, slides and outputs
 npm run render -- --project my-talk           # Optional; needs a local renderer
 npm run bundle -- --project my-talk           # Verified delivery package
