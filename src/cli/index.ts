@@ -194,6 +194,29 @@ projectOption(cli.command('claims').description('Print local claim provenance, s
   } else print(report);
   if(report.claims.some(claim=>claim.validation_issues.some(issue=>issue.severity==='error'))) process.exitCode=1;
 });
+projectOption(cli.command('story').description('Read the deck as a story: titles-only read-through, story roles, sections and flow prompts'))
+  .option('--locale <locale>','Language of the titles to read (defaults to the source language)')
+  .option('--init','Create a draft content/storyline.yaml with conservative inferred roles (never overwrites)')
+  .option('--write-markdown','Write a local titles-only read-through to output/storyline.md')
+  .option('--review','Render story/review.md from story/suggestions.yaml and list the review thread for each open suggestion')
+  .option('--apply <ids>','Apply accepted suggestions (comma-separated SG IDs) with backups and feedback records')
+  .option('--authorize <ids>','Allow accepted wording suggestions to change these approved/locked slide IDs')
+  .action(async (_name,o)=>{
+    const {dir,config,deck}=await loadProject(o.project);
+    const {initStoryline,storyMarkdown,storyReport,readStoryline}=await import('../story/index.js');
+    const {applySuggestions,candidateSuggestions,writeReview}=await import('../story/review.js');
+    if(o.init||o.apply) {const {assertNoActiveSession}=await import('../session/lease.js');await assertNoActiveSession(o.project);}
+    if(o.apply) {print(await applySuggestions(o.project,split(o.apply),split(o.authorize??'')));return;}
+    if(o.review) {print(await writeReview(o.project));return;}
+    if(o.init) print({created:await initStoryline(dir,deck),next:'Review each role with the creator, add sections, transitions and a one-sentence throughline, then rerun story.'});
+    const report=await storyReport(dir,config,deck,o.locale);
+    if(o.writeMarkdown) {
+      const destination=await safePath(dir,'output/storyline.md');
+      await atomicWrite(destination,storyMarkdown(o.project,report));
+      print({file:destination,slides:report.slides.length,warnings:report.issues.filter(i=>i.severity==='warning').length,errors:report.issues.filter(i=>i.severity==='error').length});
+    } else print({...report,candidates:candidateSuggestions(report,await readStoryline(dir)),note:'Story checks are heuristic prompts for human review. They do not establish that the narrative is sound or that the evidence supports it.'});
+    if(report.issues.some(i=>i.severity==='error')) process.exitCode=1;
+  });
 projectOption(cli.command('render').description('Create real slide PNG previews, PDF and a contact sheet with a local renderer'))
   .option('--locale <locale>','Render one language').option('--renderer <name>','auto, libreoffice or powerpoint','auto')
   .action(async (_name,o)=>{

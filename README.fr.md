@@ -28,6 +28,7 @@ Les documents importés sont conservés localement. Ils ne sont **pas automatiqu
 ```sh
 npm run brief -- --project mon-expose --check   # Vérifier le brief approuvé
 npm run build -- --project mon-expose           # Créer le PPTX modifiable
+npm run story -- --project mon-expose           # Lecture des titres seuls et alertes de fluidité
 npm run validate -- --project mon-expose        # Vérifier sources et sortie
 npm run render -- --project mon-expose          # Aperçus facultatifs
 npm run bundle -- --project mon-expose          # Préparer la livraison

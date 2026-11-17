@@ -16,11 +16,16 @@ The mandatory interview asks for presenter profile, expertise and working prefer
 
 The authoritative file is `projects/<name>/presentation-brief.yaml`. `presentation-brief.md` is *supplementary notes only*. Approval stores the confirming creator's name, date and SHA-256 content fingerprint. Edits to the approved brief invalidate that approval; run an explicit review again before building. The tool cannot prove the accuracy of narrative judgments, so the person approving must verify the content. This is an auditable local workflow control rather than cryptographic identity verification. Do not include sensitive personal information unnecessarily or transmit these files to external services without authorization.
 
+## Narrative and flow
+
+Before drafting slide bodies, agree on the story with the creator: one throughline sentence, the role of each slide (context, question, approach, evidence, conclusion and so on), sections and the transitions between them. Record them in `content/storyline.yaml`; `npm run story -- --project NAME --init` drafts the file without overwriting it. `npm run story -- --project NAME --write-markdown` writes `output/storyline.md`, a titles-only read-through with flow prompts: missing beats, evidence before the question, content after the conclusion, abrupt topic shifts, repeated titles, conclusions more certain than the preceding evidence, and pacing against the brief's duration. These are prompts for human review, not verdicts. See [storytelling](storytelling.md).
+
 ## Editorial review before delivery
 
 For each slide, a person or agent should check:
 
 - Is there one central message appropriate to the audience and the presentation's purpose? Do the title and supporting content express it clearly?
+- Does the slide follow from the previous one, and do the titles read in order tell the argument? Review `npm run story` prompts.
 - Does the evidence actually support the title? Compare the source's population, comparison, outcome, uncertainty and limits; do not turn an association into causation. Flag unresolved interpretation for human scientific review.
 - Are visuals, labels and text relevant, legible and understandable in the intended setting? Multiple coordinated visuals may support one message. Preserve useful detail in notes.
 - Are sources and evidence classifications accurate, required translations complete, and accessibility descriptions appropriate? Inspect the real output and follow the [accessibility review](accessibility-review.md).
