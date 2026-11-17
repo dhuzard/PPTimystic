@@ -10,7 +10,7 @@ slides:
     content:
       en-US:
         title: PPTimistic
-        message: Clear ideas. Editable slides. Traceable claims.
+        message: Clear ideas. Editable slides.
         body: A local-first studio for scientific communication.
         notes: A local-first studio for scientific communication.
         caption: ""
@@ -64,27 +64,6 @@ slides:
       asset: assets/reference/idea.svg
       brief: Conceptual network, one central idea, restrained teal, no text.
       accepted: true
-  - id: S006
-    layout: statement
-    status: draft
-    locked: false
-    evidence: conceptual
-    source_refs: []
-    citations: []
-    content:
-      en-US:
-        title: Dense slides and untraceable claims make evidence hard to judge
-        message: When a slide carries many ideas and no visible source, the audience
-          cannot tell what is shown, or how strongly it is supported.
-        body: ""
-        notes: Conceptual problem statement (the "But" of the story). Drafted by the
-          story maker from accepted suggestion SG-004; review the wording. No
-          data or study is represented.
-        caption: ""
-        alt: ""
-        labels: []
-        seriesNames: []
-        review: draft
   - id: S003
     layout: workflow
     status: draft
@@ -177,7 +156,7 @@ slides:
     citations: []
     content:
       en-US:
-        title: Start from the evidence, and every slide stays clear and traceable
+        title: Start with the evidence
         message: |-
           Build a clear story.
           Keep every claim traceable.
