@@ -17,6 +17,8 @@ npm run story -- --project talk --locale fr-FR     # read the titles of another 
 
 The storyline is optional editorial planning metadata. `content/slides.yaml` stays authoritative for slide order and content. The storyline annotates slides by their stable IDs:
 
+Each entry may also carry an `explanatory_contract`, owned by the story maker: audience question, central message, explicit concepts introduced and required, a worked example, visible text that revisions must preserve, and success checks. Prerequisite-order prompts use actual deck order. Contracts appear in the titles-only report and scientific-review context; review apply enforces preserved text in the native scene. See [the contract schema and example](scientific-review.md#explanatory-contracts).
+
 ```yaml
 version: 1
 framework: research          # research, abt or free

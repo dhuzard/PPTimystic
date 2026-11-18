@@ -14,12 +14,19 @@ export const localizedSchema = z.object({
   review: z.enum(['draft', 'review', 'approved', 'locked']).default('draft')
 }).strict();
 // Explicit traceability metadata; these links do not assert scientific validity.
+export const claimTypes = ['definition', 'measured-result', 'implemented-capability', 'proposed-capability', 'illustrative-example'] as const;
 export const claimSchema = z.object({
   id: z.string().regex(/^[A-Za-z][A-Za-z0-9_-]*$/),
   field: z.enum(['title', 'message', 'body', 'caption']),
   source_ref: z.string().refine(value => Boolean(value.trim()), 'Source reference must not be blank'),
   excerpt: z.string().refine(value => Boolean(value.trim()), 'Source excerpt must not be blank'),
-  locator: z.string().refine(value => Boolean(value.trim()), 'Locator must not be blank').optional()
+  locator: z.string().refine(value => Boolean(value.trim()), 'Locator must not be blank').optional(),
+  claim_type: z.enum(claimTypes).optional(),
+  qualification_note: z.string().trim().min(1).max(2000).optional(),
+  human_verification: z.object({
+    verified_by: z.string().trim().min(1).max(160), verified_at: z.string().datetime(),
+    claim_sha256: z.string().regex(/^[a-f0-9]{64}$/)
+  }).strict().optional()
 }).strict();
 export const visualObjectOverrideSchema = z.object({
   x: z.number().finite().optional(), y: z.number().finite().optional(),

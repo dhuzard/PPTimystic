@@ -11,11 +11,26 @@ export type StoryRole = typeof storyRoles[number];
 export type StoryFramework = typeof storyFrameworks[number];
 
 const slideId = z.string().regex(/^[A-Za-z][A-Za-z0-9_-]*$/);
+const contractText = z.string().trim().min(1).max(2000);
+/** Owned by the story maker. Concept names are explicit identifiers, never inferred from prose. */
+export const explanatoryContractSchema = z.object({
+  audience_question: contractText,
+  central_message: contractText,
+  introduces: z.array(contractText).default([]),
+  prerequisites: z.array(contractText),
+  worked_example: contractText.nullable(),
+  must_preserve: z.array(z.object({
+    field: z.enum(['title', 'message', 'body', 'caption']), text: contractText,
+    locale: z.string().refine(s => { try { return Intl.getCanonicalLocales(s)[0] === s; } catch { return false; } }).optional()
+  }).strict()),
+  success_checks: z.array(contractText).min(1)
+}).strict();
 export const storySlideSchema = z.object({
   role: z.enum(storyRoles).optional(),
   section: z.string().trim().min(1).max(80).optional(),
   // A planned spoken bridge from this slide into the next one (source language).
-  transition: z.string().max(1000).default('')
+  transition: z.string().max(1000).default(''),
+  explanatory_contract: explanatoryContractSchema.optional()
 }).strict();
 export const storylineSchema = z.object({
   version: z.literal(1),
@@ -33,6 +48,7 @@ export interface StorySlide {
   position: number; id: string; layout: Slide['layout']; evidence: Slide['evidence'];
   role?: StoryRole; inferred: boolean; section?: string;
   title: string; message: string; transition: string;
+  explanatory_contract?: z.infer<typeof explanatoryContractSchema>;
 }
 
 /** Beats each framework expects, with the reason a missing beat weakens flow. */
@@ -84,8 +100,18 @@ export function analyzeStory(deck: Deck, config: Project, storyline?: Storyline,
     const text = slide.content[locale] ?? slide.content[config.source_locale];
     return { position: index + 1, id: slide.id, layout: slide.layout, evidence: slide.evidence,
       role: entry?.role ?? inferred, inferred: Boolean(inferred), section: entry?.section,
-      title: text?.title ?? '', message: text?.message ?? '', transition: entry?.transition ?? '' };
+      title: text?.title ?? '', message: text?.message ?? '', transition: entry?.transition ?? '',
+      explanatory_contract: entry?.explanatory_contract };
   });
+  const conceptKey = (value: string) => value.normalize('NFC').trim().toLowerCase();
+  const introductions = new Map<string, StorySlide>();
+  for (const slide of slides) for (const concept of slide.explanatory_contract?.introduces ?? [])
+    if (!introductions.has(conceptKey(concept))) introductions.set(conceptKey(concept), slide);
+  for (const slide of slides) for (const concept of slide.explanatory_contract?.prerequisites ?? []) {
+    const intro = introductions.get(conceptKey(concept));
+    if (intro && intro.position > slide.position) warn('story-prerequisite-order', `"${concept}" is needed on ${slide.id} but first introduced on later slide ${intro.id}.`, slide.id);
+    else if (!intro) warn('story-prerequisite-unrecorded', `No introduction is recorded for prerequisite "${concept}" on ${slide.id}. Check the audience's prior knowledge or record its introduction.`, slide.id);
+  }
   const framework = storyline?.framework ?? 'research';
   const throughline = storyline?.throughline.trim() || context.centralMessage?.trim() || '';
   const main = slides.filter(slide => slide.role !== 'backup');
@@ -209,6 +235,12 @@ export function storyMarkdown(project: string, report: Awaited<ReturnType<typeof
       const slide = report.slides.find(s => s.id === id)!;
       lines.push(`${slide.position}. **${clean(slide.title)}** — ${slide.role ? `${slide.role}${slide.inferred ? ' *(inferred)*' : ''}` : '*no role*'} · ${clean(slide.id)} · ${slide.evidence}`);
       if (slide.transition.trim()) lines.push(`   - → ${clean(slide.transition)}`);
+      const c = slide.explanatory_contract;
+      if (c) lines.push(`   - Audience question: ${clean(c.audience_question)}`, `   - Central message: ${clean(c.central_message)}`,
+        `   - Introduces: ${c.introduces.map(clean).join('; ') || 'none'}`, `   - Prerequisites: ${c.prerequisites.map(clean).join('; ') || 'none'}`,
+        `   - Worked example: ${clean(c.worked_example) || 'none recorded'}`,
+        ...c.must_preserve.map(p => `   - Preserve (${clean(p.locale ?? report.locale)}, ${p.field}): ${clean(p.text)}`),
+        ...c.success_checks.map(s => `   - Success check: ${clean(s)}`));
     }
     lines.push('');
   }

@@ -14,16 +14,22 @@ export const suggestionsPath = 'story/suggestions.yaml';
 export const reviewPath = 'story/review.md';
 const slideId = z.string().regex(/^[A-Za-z][A-Za-z0-9_-]*$/);
 const text = z.string().trim().min(1).max(2000);
-export const changeSchema = z.discriminatedUnion('kind', [
+// Structural changes touch the storyline or slide order, never slide wording.
+const structureOptions = [
   z.object({ kind: z.literal('role'), role: z.enum(storyRoles) }).strict(),
   z.object({ kind: z.literal('section'), section: z.string().trim().min(1).max(80) }).strict(),
   z.object({ kind: z.literal('transition'), text }).strict(),
   z.object({ kind: z.literal('throughline'), text }).strict(),
   z.object({ kind: z.literal('framework'), framework: z.enum(storyFrameworks) }).strict(),
+  // Move the slide directly after another slide ID, or to the start when `after` is null.
+  z.object({ kind: z.literal('move'), after: slideId.nullable() }).strict()
+] as const;
+export const structureChangeSchema = z.discriminatedUnion('kind', [...structureOptions]);
+export type StructureChange = z.infer<typeof structureChangeSchema>;
+export const changeSchema = z.discriminatedUnion('kind', [
+  ...structureOptions,
   z.object({ kind: z.literal('title'), text, locale: z.string().optional() }).strict(),
   z.object({ kind: z.literal('message'), text, locale: z.string().optional() }).strict(),
-  // Move the slide directly after another slide ID, or to the start when `after` is null.
-  z.object({ kind: z.literal('move'), after: slideId.nullable() }).strict(),
   // Anything that needs new authored content or judgment (adding, merging or splitting slides).
   z.object({ kind: z.literal('other'), description: text }).strict()
 ]);
@@ -183,6 +189,56 @@ export async function writeReview(project: string) {
     ...(open.length ? {} : { warning: 'No open suggestions. The story maker should propose at least one change before opening the review.' }) };
 }
 
+/**
+ * Apply storyline and slide-order changes in order, backing up each file it rewrites.
+ * Shared by the story maker and the scientific-review builder; it never changes wording.
+ */
+export async function applyStructureChanges(project: string, items: { slides: string[]; change: StructureChange }[], at = stamp()) {
+  if (!items.length) return;
+  const { dir, config, deck } = await loadProject(project);
+  const known = new Set(deck.slides.map(slide => slide.id));
+  for (const { slides, change } of items) {
+    for (const id of slides) if (!known.has(id)) throw new Error(`Unknown slide ${id}.`);
+    if (change.kind === 'move' && change.after && !known.has(change.after)) throw new Error(`Cannot move after unknown slide ${change.after}.`);
+  }
+  let storyline: Storyline | undefined;
+  let deckChanged = false;
+  const nextDeck: Deck = structuredClone(deck);
+  for (const { slides, change: c } of items) {
+    if (c.kind === 'move') {
+      const index = nextDeck.slides.findIndex(x => x.id === slides[0]);
+      const [moving] = nextDeck.slides.splice(index, 1);
+      nextDeck.slides.splice(c.after ? nextDeck.slides.findIndex(x => x.id === c.after) + 1 : 0, 0, moving);
+      deckChanged = true;
+      continue;
+    }
+    storyline ??= await readStoryline(dir) ?? storylineSchema.parse({ version: 1 });
+    if (c.kind === 'throughline') storyline.throughline = c.text;
+    else if (c.kind === 'framework') storyline.framework = c.framework;
+    else for (const id of slides) {
+      const entry = storyline.slides[id] ?? { transition: '' };
+      if (c.kind === 'role') entry.role = c.role;
+      if (c.kind === 'section') entry.section = c.section;
+      if (c.kind === 'transition') entry.transition = c.text;
+      storyline.slides[id] = entry;
+    }
+  }
+  if (deckChanged) {
+    const content = await safePath(dir, config.content);
+    // Reload so wording revisions applied earlier are kept; only the order changes here.
+    const current = deckSchema.parse(await readYaml(content));
+    const order = nextDeck.slides.map(slide => slide.id);
+    current.slides.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    await atomicWrite(path.join(dir, `feedback/${at}.story-order-before.yaml`), await fs.readFile(content));
+    await writeYaml(content, deckSchema.parse(current));
+  }
+  if (storyline) {
+    const target = await safePath(dir, storylinePath);
+    if (await exists(target)) await atomicWrite(path.join(dir, `feedback/${at}.storyline-before.yaml`), await fs.readFile(target));
+    await writeYaml(target, storylineSchema.parse(storyline));
+  }
+}
+
 /** Apply suggestions a person accepted. Each change is backed up and logged under feedback/. */
 export async function applySuggestions(project: string, ids: string[], authorized: string[] = []) {
   const { dir, config, deck } = await loadProject(project);
@@ -204,48 +260,17 @@ export async function applySuggestions(project: string, ids: string[], authorize
 
   const results: { id: string; applied: string }[] = [];
   const at = stamp();
-  let storyline: Storyline | undefined;
-  let deckChanged = false;
-  const nextDeck: Deck = structuredClone(deck);
+  const structure: { slides: string[]; change: StructureChange }[] = [];
   for (const s of selected) {
     const c = s.change;
     if (c.kind === 'title' || c.kind === 'message') {
       const locale = c.locale ?? config.source_locale;
       await applyRevision(project, { slide: s.slides[0], locale, category: 'content', message: `Story suggestion ${s.id}: ${s.rationale}`, patch: { [c.kind]: c.text } }, authorized);
-    } else if (c.kind === 'move') {
-      const index = nextDeck.slides.findIndex(x => x.id === s.slides[0]);
-      const [moving] = nextDeck.slides.splice(index, 1);
-      nextDeck.slides.splice(c.after ? nextDeck.slides.findIndex(x => x.id === c.after) + 1 : 0, 0, moving);
-      deckChanged = true;
-    } else {
-      storyline ??= await readStoryline(dir) ?? storylineSchema.parse({ version: 1 });
-      if (c.kind === 'throughline') storyline.throughline = c.text;
-      else if (c.kind === 'framework') storyline.framework = c.framework;
-      else for (const id of s.slides) {
-        const entry = storyline.slides[id] ?? { transition: '' };
-        if (c.kind === 'role') entry.role = c.role;
-        if (c.kind === 'section') entry.section = c.section;
-        if (c.kind === 'transition') entry.transition = c.text;
-        storyline.slides[id] = entry;
-      }
-    }
+    } else if (c.kind !== 'other') structure.push({ slides: s.slides, change: c });
     s.status = 'applied'; s.decided_at ??= new Date().toISOString();
     results.push({ id: s.id, applied: describe(s, deck, config) });
   }
-  if (deckChanged) {
-    const content = await safePath(dir, config.content);
-    // Reload so wording revisions applied above are kept; only the order changes here.
-    const current = deckSchema.parse(await readYaml(content));
-    const order = nextDeck.slides.map(slide => slide.id);
-    current.slides.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-    await atomicWrite(path.join(dir, `feedback/${at}.story-order-before.yaml`), await fs.readFile(content));
-    await writeYaml(content, deckSchema.parse(current));
-  }
-  if (storyline) {
-    const target = await safePath(dir, storylinePath);
-    if (await exists(target)) await atomicWrite(path.join(dir, `feedback/${at}.storyline-before.yaml`), await fs.readFile(target));
-    await writeYaml(target, storylineSchema.parse(storyline));
-  }
+  await applyStructureChanges(project, structure, at);
   await writeYaml(path.join(dir, `feedback/${at}.story-suggestions.yaml`), { at: new Date().toISOString(), applied: results, authorized });
   await writeYaml(await safePath(dir, suggestionsPath), suggestionsFileSchema.parse(file));
   return { applied: results, next: 'Rebuild to validate the deck. Translations of changed wording are now marked stale and need review.' };

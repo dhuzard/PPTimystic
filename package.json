@@ -19,6 +19,7 @@
     "validate": "tsx src/cli/index.ts validate",
     "claims": "tsx src/cli/index.ts claims",
     "story": "tsx src/cli/index.ts story",
+    "review": "tsx src/cli/index.ts review",
     "bundle": "tsx src/cli/index.ts bundle",
     "render": "tsx src/cli/index.ts render",
     "revise": "tsx src/cli/index.ts revise",

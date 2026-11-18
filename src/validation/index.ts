@@ -8,6 +8,7 @@ import { resolveChartData } from '../content/chart-data.js';
 import { consistency, fictionalDataDisclosure, translationFreshness } from '../localization/index.js';
 import { chartLabelsNeedingReview } from '../layouts/text-fit.js';
 import { creatorBriefStatus } from '../core/brief.js';
+import { claimVerificationState } from '../content/claims.js';
 
 export type Issue = { severity: 'error' | 'warning'; code: string; slide?: string; locale?: string; claim?: string; message: string };
 function luminance(hex: string) {
@@ -67,6 +68,8 @@ export async function validateContent(dir: string, config: Project, deck: Deck, 
         : claim.field === 'message' && slide.layout === 'full-image' ? Boolean(original?.caption) : false;
       if (!original?.[claim.field].trim() || hidden) addClaim('claim-field', `${claim.field} must contain visible source-locale text in this layout.`);
       const source = sources.find(record => record.id === claim.source_ref);
+      if (claimVerificationState(slide, claim, source) === 'stale') issues.push({ severity: 'warning', code: 'claim-verification-stale', slide: slide.id, claim: claim.id,
+        message: `${claim.id}: wording, claim type, qualifications or source provenance changed after personal verification. A person must verify it again.` });
       if (!slide.source_refs.includes(claim.source_ref) || !source) {
         addClaim('claim-reference', `Source ${claim.source_ref} must appear in slide source_refs and content/sources.yaml.`);
         continue;
