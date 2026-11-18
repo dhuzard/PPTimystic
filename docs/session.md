@@ -9,6 +9,12 @@ npm run session -- --project research-talk --port 0
 
 The server chooses an available port by default; `--port 0` explicitly requests the same behavior. Use `--port 4317` or another number if you need a fixed port. The command prints separate owner, editor, and reviewer invitation links. Open the owner link and enter a name. Keep the owner link private; share each other link only with people who should have that role. Stop the server with Ctrl+C. Invitations and signed-in sessions are specific to the running server; restarting it creates new invitations.
 
+## Editable human review
+
+When using the human-review skill to review slides, open this studio's native owner or editor invitation directly. It provides the same text and image editing as a multi-person session for a single creator as well: double-click text, select an image to replace it, use **+ Image** to upload an image with its alt description, and drag or use the position and size controls. Changes save to the project, and comments, protection checks and revision history remain available.
+
+Use the generic human-review tool for the Markdown storyline or other prose. Its overlay can intercept editor controls, and its proxy does not forward authenticated app cookies. A rendered slide gallery is useful for visual comments, but direct object editing belongs in the native studio. Keep the studio process running while the creator edits, and use its session API for agent changes while the project lease is active.
+
 By default, the server binds to `127.0.0.1`, so it is accessible only on that computer. On a **trusted private network**, `--host 0.0.0.0` listens on network interfaces. Replace `localhost` in the printed invitation with the server computer's private network address, preserving its port and token. The server uses HTTP, so network traffic and invitation links are not encrypted. Do not expose it to the public internet or an untrusted network. Anyone with an invitation has the permissions of its role.
 
 ## Working together

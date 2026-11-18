@@ -68,6 +68,12 @@ Then run `npm run validate -- --project NAME --source-only` and `npm run story -
 
 If the poll returns `closed`, stop polling. Summarize what was applied, rejected and still open, the changed slide IDs, the validation result, and next steps: build, translation review, render.
 
+## Reviewing and editing the actual slides
+
+When the creator asks to see or edit the slides, use PPTimistic's existing studio: `npm run session -- --project NAME --port 0` (see `docs/session.md`). Open the native owner or editor invitation directly. It supports text, image replacement and uploads, positions, sizes, comments and history. Keep the server running while the creator edits. The human-review skill routes editable presentations to this native surface; the generic human-review overlay remains useful for this story document.
+
+Read the current slide source and session history before continuing after a live editing session. Edits saved by the studio are already authoritative; do not replace them with cached wording from the story review. Use session APIs for agent changes while a project lease is active.
+
 ## Guardrails
 
 - Change sources only through accepted suggestions, the creator's direct edits, or explicit instructions. Never apply a `proposed` or `discussing` suggestion.
