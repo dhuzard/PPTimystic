@@ -67,7 +67,7 @@ npm run revise -- --project talk --file examples/revision.yaml
 npm run build -- --project talk
 ```
 
-The first command records feedback without changing content. The second applies a structured patch with a source backup and feedback entry. Optional fields not present in the patch remain intact. `layout` and `status` may also be set at the revision's top level. Categories are content, layout, typography, illustration, translation, scientific-correction and global-theme. Global feedback can be logged against a representative stable ID; agents implement global theme changes directly in the selected theme file.
+The first command records feedback without changing content. The second applies a structured patch with a source backup and feedback entry. Optional fields not present in the patch remain intact. `layout`, `status`, `evidence` (reclassification) and `visual_objects` (per-object position, size or style overrides, merged with existing ones) may also be set at the revision's top level. Categories are content, layout, typography, illustration, translation, scientific-correction and global-theme. Global feedback can be logged against a representative stable ID; agents implement global theme changes directly in the selected theme file.
 
 Approved/locked slides require user approval before the agent invokes `--authorize S003`. Rebuilding a previously locked baseline also requires that allowance for changed content. Pass the same authorized ID to the build after an approved revision. Logging feedback itself does not need to unlock the slide. Keep the original assets and all source snapshots.
 

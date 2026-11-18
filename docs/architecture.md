@@ -11,6 +11,7 @@ src/layouts/         nine native PowerPoint layouts, geometry records
 src/images/          provider contract, local assets, prompts and metadata
 src/localization/    manual translation requests and consistency checks
 src/story/           storyline roles, read-through, flow prompts, suggestions and review page
+src/review/          scientific-review contract, ledger, revision planner, guarded builder, manifests
 src/feedback/        feedback log and structured source revisions
 src/session/         HTTP/SSE server, shared editor, Yjs text, journal, agent queue
 src/rendering/       LibreOffice/Poppler or Windows PowerPoint rendering
@@ -19,6 +20,7 @@ projects/<name>/     isolated presentation source and output
 templates/project/   minimal source examples
 examples/            Markdown plan and revision examples
 tests/               local unit and actual PPTX integration tests
+agents/              provider-neutral agent role definitions (reviewer, audience panel, builder)
 ```
 
 ## Project configuration
@@ -105,6 +107,8 @@ claims:
 ```
 
 The source ID must be indexed and attached to the slide; the excerpt must match local extracted text after whitespace normalization. The original document and extracted text must retain their recorded hashes. Claim IDs must be unique within the presentation. The link records provenance, not scientific validity: a reviewer must still decide whether the excerpt supports the slide wording. `npm run claims -- --project NAME` prints a local report containing the linked slide field's text in every authored language, source and extraction paths and hashes, locator, excerpt hash and length, and validation status. It also reports whether the current original and extracted bytes match ingestion-time hashes. `--write-markdown` writes `output/claims-report.md` with relative links to those local files. Neither report prints the excerpt itself. Treat reports as potentially confidential because they contain slide text and source paths. Presenter notes include claim IDs and locators but not the extracted passage. For sources without usable extracted text, use ordinary citations and manual review until a suitable local extraction is available.
+
+Claims optionally add `claim_type` (definition, measured-result, implemented-capability, proposed-capability, illustrative-example), `qualification_note` and fingerprint-bound `human_verification`. Only a person records verification through interactive `claims --verify SLIDE/CLAIM --by NAME`; agents may read sources without asserting verification. See [scientific review](scientific-review.md#claim-types-and-personal-verification) for stale verification and protection rules.
 
 Layouts: `title`, `statement`, `text-image`, `full-image`, `diagram`, `workflow`, `chart`, `comparison`, `conclusion`. Diagram/workflow labels require 2–5 items. Comparison uses two `labels` as headings and `message`/`body` as the left/right explanations. Full-image uses a separate illustration and an editable title/caption; it is never a rasterized complete slide. Add table support by extending the schema and drawing native `addTable` objects; a dedicated table layout is not included yet.
 

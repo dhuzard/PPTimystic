@@ -37,7 +37,7 @@ beforeAll(async()=>{
   expect(source).toBeDefined();
   const deck=YAML.parse(await fs.readFile(projectFile('content/slides.yaml'),'utf8'));
   deck.slides[1].source_refs.push(source.id);
-  deck.slides[1].claims=[{id:'C001',field:'body',source_ref:source.id,excerpt,locator:'page 4, paragraph 2'}];
+  deck.slides[1].claims=[{id:'C001',field:'body',source_ref:source.id,excerpt,locator:'page 4, paragraph 2',claim_type:'illustrative-example',qualification_note:'Fictional provenance example; no measured result.'}];
   await fs.writeFile(projectFile('content/slides.yaml'),YAML.stringify(deck));
   // A real project created with sources cannot build until the creator's
   // completed brief has been explicitly approved; this is a test fixture.
@@ -61,6 +61,34 @@ beforeAll(async()=>{
 afterAll(async()=>{await fs.rm(sandbox,{recursive:true,force:true});});
 
 describe('local claim report',()=>{
+  test('noninteractive agents cannot personally verify, while a synthetic human record retains backups and goes stale on qualification changes',async()=>{
+    const file=projectFile('content/slides.yaml'),before=await fs.readFile(file);
+    const refused=await cli('claims','--project','claim-demo','--verify','S002/C001','--by','An agent');
+    expect(refused.code).toBe(1);expect(refused.output).toContain('interactive terminal');
+    expect(await fs.readFile(file)).toEqual(before);
+    // Explicitly synthetic human confirmation for testing the writer, never a real claim verification.
+    const moduleUrl=pathToFileURL(path.join(repo,'src/content/claims.ts')).href;
+    const ioUrl=pathToFileURL(path.join(repo,'src/core/io.ts')).href;
+    const script=`import {recordHumanClaimVerification,claimFingerprint} from ${JSON.stringify(moduleUrl)};
+      import {loadProject,readYaml} from ${JSON.stringify(ioUrl)};
+      const {dir,deck}=await loadProject('claim-demo');
+      const slide=deck.slides[1],claim=slide.claims[0];
+      const source=(await readYaml(dir+'/content/sources.yaml')).sources.find(s=>s.id===claim.source_ref);
+      const result=await recordHumanClaimVerification('claim-demo',slide.id,claim.id,'Synthetic Test Creator',source,claimFingerprint(slide,claim,source));
+      console.log(JSON.stringify(result));`;
+    try {
+      const recorded=await exec(process.execPath,['--import',pathToFileURL(path.join(repo,'node_modules/tsx/dist/loader.mjs')).href,'--input-type=module','--eval',script],{cwd:sandbox});
+      expect(JSON.parse(recorded.stdout)).toMatchObject({slide:'S002',claim:'C001',verified_by:'Synthetic Test Creator',claim_sha256:expect.stringMatching(/^[a-f0-9]{64}$/)});
+      const report=JSON.parse((await cli('claims','--project','claim-demo')).output);
+      expect(report.claims[0]).toMatchObject({claim_type:'illustrative-example',verification_state:'current'});
+      expect((await fs.readdir(projectFile('feedback'))).some(f=>f.endsWith('.claim-verification.backup.yaml'))).toBe(true);
+      const changed=YAML.parse(await fs.readFile(file,'utf8'));changed.slides[1].claims[0].qualification_note='A changed limitation needs personal rechecking.';
+      await fs.writeFile(file,YAML.stringify(changed));
+      const stale=JSON.parse((await cli('claims','--project','claim-demo')).output);
+      expect(stale.claims[0].verification_state).toBe('stale');
+      expect(stale.claims[0].validation_issues).toContainEqual(expect.objectContaining({code:'claim-verification-stale'}));
+    } finally {await fs.writeFile(file,before);}
+  });
   test('writes clickable local paths and flags changed source bytes without disclosing excerpts',async()=>{
     const first=await cli('claims','--project','claim-demo','--write-markdown');
     expect(first.code).toBe(0);

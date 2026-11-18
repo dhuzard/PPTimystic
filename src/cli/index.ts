@@ -159,11 +159,32 @@ projectOption(cli.command('validate').description('Validate source, translations
 });
 projectOption(cli.command('claims').description('Print local claim provenance, slide text and source paths (excerpt text is withheld)'))
   .option('--write-markdown','Write a local Markdown report with links to retained sources under output/')
+  .option('--verify <slide/claim>','Personally verify a classified claim after reading its source (interactive human confirmation)')
+  .option('--by <name>','Person who verified the claim (--verify)')
+  .option('--authorize <list>','Record explicit authority to update protected slides (--verify)')
   .action(async (_name,o)=>{
   const {dir,config,deck,theme}=await loadProject(o.project);
   const sourceIndex=await safePath(dir,'content/sources.yaml');
   const sourceRecords=await exists(sourceIndex)?((await readYaml(sourceIndex)).sources as {id:string;path:string;sha256:string;extracted?:string;extracted_sha256?:string}[]):[];
   const issues=await validateContent(dir,config,deck,theme);
+  const {claimFingerprint,claimVerificationState,recordHumanClaimVerification}=await import('../content/claims.js');
+  if(o.verify) {
+    if(!process.stdin.isTTY) throw new Error('Claim verification requires a person to confirm in an interactive terminal; agents cannot verify claims.');
+    if(!o.by?.trim()) throw new Error('--verify requires --by: the person who checked the source.');
+    const parts=o.verify.split('/');
+    if(parts.length!==2) throw new Error('--verify must be SLIDE/CLAIM.');
+    const [slideId,claimId]=parts,slide=deck.slides.find(s=>s.id===slideId),claim=slide?.claims?.find(c=>c.id===claimId);
+    if(!slide||!claim) throw new Error(`Unknown claim ${o.verify}.`);
+    const source=sourceRecords.find(s=>s.id===claim.source_ref);
+    if(!source||issues.some(i=>i.severity==='error'&&(i.claim===claimId||i.slide===slideId&&i.code==='source-integrity'))) throw new Error('Resolve claim and source validation errors before personal verification.');
+    if(!claim.claim_type) throw new Error('Classify the claim before human verification.');
+    const fingerprint=claimFingerprint(slide,claim,source);
+    print({slide:slideId,claim:claimId,text:slide.content[config.source_locale][claim.field],claim_type:claim.claim_type,qualification_note:claim.qualification_note,source:source.path,extracted:source.extracted,locator:claim.locator});
+    const {confirm}=await import('@inquirer/prompts');
+    if(!await confirm({message:'Have you personally read this source and verified the claim type, wording and qualifications?',default:false})) throw new Error('Not confirmed; claim unchanged.');
+    print(await recordHumanClaimVerification(o.project,slideId,claimId,o.by,source,fingerprint,split(o.authorize??'')));
+    return;
+  }
   async function integrity(relative?:string,recorded?:string) {
     if(!relative||!recorded)return {status:'untracked' as const};
     try {const file=await safePath(dir,relative);if(!await exists(file))return {status:'missing' as const};
@@ -175,7 +196,8 @@ projectOption(cli.command('claims').description('Print local claim provenance, s
     const source=sourceRecords.find(record=>record.id===claim.source_ref);
     const localizedText=Object.fromEntries(Object.entries(slide.content).map(([locale,content])=>[locale,content[claim.field]]));
     const validationIssues=issues.filter(issue=>issue.claim===claim.id||(issue.code==='source-integrity'&&issue.slide===slide.id));
-    claims.push({slide_id:slide.id,claim_id:claim.id,field:claim.field,localized_text:localizedText,source_ref:claim.source_ref,source_path:source?.path,source_sha256:source?.sha256,source_integrity:await integrity(source?.path,source?.sha256),extracted_path:source?.extracted,extracted_sha256:source?.extracted_sha256,extracted_integrity:await integrity(source?.extracted,source?.extracted_sha256),locator:claim.locator,excerpt_sha256:hash(claim.excerpt),excerpt_length:[...claim.excerpt].length,validation_issues:validationIssues.map(({severity,code,message})=>({severity,code,message}))});
+    const sourceIntegrity=await integrity(source?.path,source?.sha256),extractedIntegrity=await integrity(source?.extracted,source?.extracted_sha256);
+    claims.push({slide_id:slide.id,claim_id:claim.id,field:claim.field,claim_type:claim.claim_type??'unclassified',qualification_note:claim.qualification_note,human_verification:claim.human_verification,verification_state:claimVerificationState(slide,claim,source,sourceIntegrity.status==='current'&&extractedIntegrity.status==='current'),localized_text:localizedText,source_ref:claim.source_ref,source_path:source?.path,source_sha256:source?.sha256,source_integrity:sourceIntegrity,extracted_path:source?.extracted,extracted_sha256:source?.extracted_sha256,extracted_integrity:extractedIntegrity,locator:claim.locator,excerpt_sha256:hash(claim.excerpt),excerpt_length:[...claim.excerpt].length,validation_issues:validationIssues.map(({severity,code,message})=>({severity,code,message}))});
   }
   const report={project:o.project,source_locale:config.source_locale,claims};
   if(o.writeMarkdown) {
@@ -189,7 +211,7 @@ projectOption(cli.command('claims').description('Print local claim provenance, s
     const lines=[`# Claim review — ${clean(o.project)}`,'','This local report contains slide text and source paths. Literal excerpt matching and file hashes do not establish scientific support. Excerpt text is withheld.','','| Slide | Claim | Field | Locator | Original | Extracted | Source state | Extraction state | Review issues |','| --- | --- | --- | --- | --- | --- | --- | --- | --- |'];
     for(const claim of claims) lines.push(`| ${clean(claim.slide_id)} | ${clean(claim.claim_id)} | ${clean(claim.field)} | ${clean(claim.locator)} | ${await link(claim.source_path)} | ${await link(claim.extracted_path)} | ${claim.source_integrity.status} | ${claim.extracted_integrity.status} | ${clean(claim.validation_issues.map(issue=>issue.code).join(', ')||'none')} |`);
     lines.push('','## Localized slide text','');
-    for(const claim of claims) {lines.push(`### ${clean(claim.slide_id)} / ${clean(claim.claim_id)}`,'');for(const [locale,value] of Object.entries(claim.localized_text))lines.push(`- ${clean(locale)}: ${clean(value)}`);lines.push('');}
+    for(const claim of claims) {lines.push(`### ${clean(claim.slide_id)} / ${clean(claim.claim_id)}`,'',`- Claim type: ${claim.claim_type}`,`- Qualification: ${clean(claim.qualification_note)||'not recorded'}`,`- Human verification: ${claim.verification_state}${claim.human_verification?` (${clean(claim.human_verification.verified_by)}, ${clean(claim.human_verification.verified_at)})`:''}`);for(const [locale,value] of Object.entries(claim.localized_text))lines.push(`- ${clean(locale)}: ${clean(value)}`);lines.push('');}
     await atomicWrite(destination,lines.join('\n'));
     print({file:destination,claims:claims.length,errors:claims.filter(claim=>claim.validation_issues.some(issue=>issue.severity==='error')).length});
   } else print(report);
@@ -217,6 +239,70 @@ projectOption(cli.command('story').description('Read the deck as a story: titles
       print({file:destination,slides:report.slides.length,warnings:report.issues.filter(i=>i.severity==='warning').length,errors:report.issues.filter(i=>i.severity==='error').length});
     } else print({...report,candidates:candidateSuggestions(report,await readStoryline(dir)),note:'Story checks are heuristic prompts for human review. They do not establish that the narrative is sound or that the evidence supports it.'});
     if(report.issues.some(i=>i.severity==='error')) process.exitCode=1;
+  });
+const reviewModes=['prepare','submit','report','decide','link','plan','apply','verify','status','configure'];
+projectOption(cli.command('review').description('Scientific review–revision workflow: structured findings, creator decisions, guarded revisions and re-review. The semantic review is done by a configured agent (agents/scientific-reviewer.md); this command never performs AI analysis itself.'))
+  .requiredOption('--mode <mode>',reviewModes.join(', '))
+  .option('--file <path>','Submission YAML from the reviewer or builder agent (submit)','review/submission.yaml')
+  .option('--finding <ids>','Comma-separated finding IDs (decide, link)')
+  .option('--decision <decision>','accept, reject, defer, discuss or request-alternative (decide)')
+  .option('--by <name>','The person who made the decision or setting (decide, configure)')
+  .option('--note <text>','Decision note, or the alternative wanted (decide)')
+  .option('--authorize <ids>','Record the creator\'s explicit authority to change these approved/locked slides (decide --decision accept)')
+  .option('--thread <id>','human-review thread ID to link to a finding (link)')
+  .option('--workflow <mode>','review-only, assisted (default) or autonomous (configure)')
+  .option('--max-rounds <n>','Maximum reviewer–builder revision rounds (configure; default 2)')
+  .option('--allow-classes <list>','Autonomous change classes: object-geometry, layout (configure --workflow autonomous)')
+  .option('--scope-slides <list>','Slides permitted to change: comma-separated IDs, all, or none (configure; pair with --scope-classes)')
+  .option('--scope-classes <list>','Permitted revision change classes, comma-separated (configure; pair with --scope-slides)')
+  .option('--no-render','Skip preview rendering after applying a revision (apply)')
+  .option('--renderer <name>','auto, libreoffice or powerpoint (apply)','auto')
+  .action(async (_name,o)=>{
+    if(!reviewModes.includes(o.mode)) throw new Error(`Unknown mode ${o.mode}. Choose one of ${reviewModes.join(', ')}.`);
+    const review=await import('../review/workflow.js');
+    const {decisions}=await import('../review/ledger.js');
+    const {workflowModes}=await import('../review/schema.js');
+    const {dir}=await loadProject(o.project);
+    switch(o.mode) {
+      case 'prepare': print(await review.prepare(o.project)); break;
+      case 'submit': print(await review.submit(o.project,path.isAbsolute(o.file)?o.file:await safePath(dir,o.file))); break;
+      case 'report': print(await review.report(o.project)); break;
+      case 'decide': {
+        if(!o.finding||!o.decision||!o.by) throw new Error('decide needs --finding, --decision and --by. Record only decisions the creator actually made.');
+        if(!(decisions as readonly string[]).includes(o.decision)) throw new Error(`--decision must be one of ${decisions.join(', ')}.`);
+        print(await review.recordDecision(o.project,split(o.finding),o.decision,o.by,{note:o.note,authorize:split(o.authorize??'')}));
+        break;
+      }
+      case 'link': if(!o.finding||!o.thread) throw new Error('link needs --finding and --thread.'); print(await review.linkThread(o.project,o.finding,o.thread)); break;
+      case 'plan': print(await review.plan(o.project)); break;
+      case 'apply': {
+        const result=await review.apply(o.project,{render:o.render,renderer:o.renderer});print(result);
+        if(result.validation_errors.length) process.exitCode=1;
+        break;
+      }
+      case 'verify': print(await review.verify(o.project)); break;
+      case 'status': print(await review.status(o.project)); break;
+      case 'configure': {
+        if(!o.by) throw new Error('configure needs --by: the creator who chose these settings.');
+        if(o.workflow&&!(workflowModes as readonly string[]).includes(o.workflow)) throw new Error(`--workflow must be one of ${workflowModes.join(', ')}.`);
+        const maxRounds=o.maxRounds===undefined?undefined:Number(o.maxRounds);
+        if(maxRounds!==undefined&&(!Number.isInteger(maxRounds)||maxRounds<1||maxRounds>10)) throw new Error('--max-rounds must be an integer from 1 to 10.');
+        const existingSettings=(await review.readLedger(dir)).settings;
+        if(o.workflow==='autonomous'||existingSettings.workflow==='autonomous'&&o.workflow===undefined&&o.allowClasses!==undefined) {
+          // An agent must not opt a creator into autonomous revisions.
+          if(!process.stdin.isTTY) throw new Error('Autonomous revision requires the creator to confirm in an interactive terminal.');
+          const {confirm}=await import('@inquirer/prompts');
+          const classes=split(o.allowClasses??'');
+          if(!classes.length) throw new Error('Name the permitted change classes with --allow-classes (object-geometry, layout).');
+          if(!await confirm({message:`Allow the builder to apply ${classes.join(' and ')} fixes to draft slides without asking per finding? Scientific wording, evidence, data, citations and the storyline still need your decision.`,default:false})) throw new Error('Not confirmed; settings unchanged.');
+        }
+        if((o.scopeSlides===undefined)!==(o.scopeClasses===undefined)) throw new Error('Set --scope-slides and --scope-classes together.');
+        const scope=o.scopeSlides===undefined?undefined:{slide_ids:o.scopeSlides==='all'?null:o.scopeSlides==='none'?[]:split(o.scopeSlides),allowed_change_classes:split(o.scopeClasses)};
+        const {revisionScopeSchema}=await import('../review/schema.js');
+        print(await review.configure(o.project,{workflow:o.workflow,maxRounds,classes:o.allowClasses===undefined?(o.workflow&&o.workflow!=='autonomous'?[]:undefined):split(o.allowClasses),scope:scope?revisionScopeSchema.parse(scope):undefined,by:o.by}));
+        break;
+      }
+    }
   });
 projectOption(cli.command('render').description('Create real slide PNG previews, PDF and a contact sheet with a local renderer'))
   .option('--locale <locale>','Render one language').option('--renderer <name>','auto, libreoffice or powerpoint','auto')
