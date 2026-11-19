@@ -233,8 +233,9 @@ export const ledgerSchema = z.object({
     configured_at: z.string().datetime().optional()
   }).strict().default({ workflow: 'assisted', max_rounds: 2, autonomous_classes: [] }),
   review_rounds: z.number().int().min(0).default(0),
+  reviewed_revision: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   revision_rounds: z.number().int().min(0).default(0),
-  assessment: assessmentSchema.extend({ round: z.number().int().min(1), agent: z.string() }).optional(),
+  assessment: assessmentSchema.extend({ round: z.number().int().min(1), agent: z.string(), reviewed_revision: z.string().regex(/^[a-f0-9]{64}$/).optional() }).optional(),
   slide_assessments: z.record(slideId, slideAssessmentSchema.omit({ slide: true }).extend({ round: z.number().int().min(1), fingerprint: z.string() })).default({}),
   findings: z.array(findingRecordSchema).default([]),
   questions: z.array(questionRecordSchema).default([]),
