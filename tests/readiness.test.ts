@@ -3,7 +3,7 @@ import { hash } from '../src/core/io.js';
 import { emptyLedger } from '../src/review/ledger.js';
 import {
   evaluateReadiness, readinessChecks, readinessRecordSchema,
-  readinessSubmissionSchema, type ReadinessRecord
+  readinessSubmissionSchema, readinessApprovalSchema, type ReadinessRecord
 } from '../src/review/readiness.js';
 
 const revision = 'a'.repeat(64);
@@ -112,4 +112,22 @@ describe('mandatory scientific positioning and readiness gate', () => {
     expect(evaluateReadiness(reviewedLedger(), altered, revision, reviewedRevision).can_deliver).toBe(false);
     expect(evaluateReadiness(emptyLedger(), signed, revision, reviewedRevision).can_deliver).toBe(false);
   });
+});
+
+
+test('manual sign-off requires four affirmative acknowledgements and revision-bound evidence',()=>{
+  const valid={
+    version:1, approved_by:'Actual Presenter', approved_at:'2026-11-19T19:00:00Z',
+    revision:'a'.repeat(64), record_sha256:'b'.repeat(64),
+    acknowledgement:{
+      scientific_positioning_read:true,methods_and_limitations_understood:true,
+      expert_questions_reviewed:true,unresolved_findings_reviewed:true
+    },
+    note:'I have read and understood the independent review.'
+  };
+  expect(readinessApprovalSchema.safeParse(valid).success).toBe(true);
+  expect(readinessApprovalSchema.safeParse({...valid, acknowledgement:{
+    ...valid.acknowledgement, expert_questions_reviewed:false
+  }}).success).toBe(false);
+  expect(readinessApprovalSchema.safeParse({...valid, record_sha256:'invalid'}).success).toBe(false);
 });
