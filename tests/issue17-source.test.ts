@@ -27,7 +27,7 @@ beforeAll(async()=>{
   const inputs=path.join(root,'papers');await fs.mkdir(inputs);
   await fs.writeFile(path.join(inputs,'paper-one.txt'),'The measured activity varied across cages.\nThe sensor failed to detect all behaviours.\n');
   await fs.writeFile(path.join(inputs,'paper-two.md'),'# Comparative evidence\nThe authors report an alternative explanation for activity changes.\n');
-  const created=await cli('new','--yes','--project','science','--inputs',inputs,'--no-render');
+  const created=await cli('new','--yes','--project','science','--inputs',inputs,'--locales','en-US','--no-render');
   expect(created.code,created.stderr).toBe(0);
   const parent=path.join(root,'projects/science');
   const config=projectSchema.parse(YAML.parse(await fs.readFile(path.join(parent,'project.yaml'),'utf8')));
