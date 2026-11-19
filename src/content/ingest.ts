@@ -54,6 +54,14 @@ export async function ingest(dir: string, input?: string) {
         const parser = new PDFParse({ data: new Uint8Array(data) });
         try { text = (await parser.getText()).text; } finally { await parser.destroy(); }
         if (text.replace(/--\s*\d+\s+of\s+\d+\s*--/g, '').trim().length < 10) throw new Error('No usable text; scanned PDFs require local OCR.');
+      } else if (ext === '.pptx') {
+        const { importPptxScene } = await import('../session/pptx-native.js');
+        const original = await importPptxScene(data);
+        text = original.slides.map((slide, i) => [
+          '## Original slide '+(i+1),
+          ...slide.objects.map(o=>o.runs.map(run=>run.text).join(' ')).filter(Boolean)
+        ].join('\n')).join('\n\n');
+        if (!text.trim()) throw new Error('PowerPoint has no extractable text. Visual review is required.');
       } else if (ext === '.csv') {
         const rows = parse(data, { bom: true, columns: false, skip_empty_lines: true });
         text = JSON.stringify(rows, null, 2);
