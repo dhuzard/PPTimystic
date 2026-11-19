@@ -371,7 +371,8 @@ app.addEventListener('click',event=> {
   if(data.action==='reference-view'||data.action==='draft-view'){viewMode=data.action==='reference-view'?'reference':'draft';objectId='';editing=false;render();}
   if(data.action==='brief-cockpit') {
     void openBriefStudio({owner:state.actor.role==='owner',
-      notice:(message,failed)=>{if(failed)showError(message);else inform(message);}});
+      notice:(message,failed)=>{if(failed)showError(message);else inform(message);},
+      onApproved:()=>{void load();}});
     return;
   }
   if(data.action==='evidence-cockpit') {
