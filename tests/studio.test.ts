@@ -136,6 +136,71 @@ describe('complete local workflow',()=>{
     const readiness=await cli('readiness','--project','first-run','--mode','status');
     expect(readiness.code).not.toBe(0);
     expect(readiness.output).toContain('No completed scientific review');
+
+    // Test-only fictional assessment: prove that a valid, current independent
+    // review unlocks delivery. This fixture is not a scientific endorsement.
+    const project=path.join(sandbox,'projects/first-run');
+    const prepared=await cli('review','--project','first-run','--mode','prepare');
+    expect(prepared.code,prepared.output).toBe(0);
+    const context=JSON.parse(await fs.readFile(path.join(project,'review/context.json'),'utf8'));
+    const reviewerSubmission={
+      kind:'review',version:1,
+      agent:{role:'reviewer',name:'Fixture scientific reviewer',model:'local-test-fixture'},
+      context_revision:context.revision,
+      assessment:{
+        summary:'This is a fictional integration fixture, not an externally verified scientific presentation.',
+        central_message_as_understood:'This synthetic deck does not contain any measured scientific results.',
+        audience_fit:'A test-only deck intended solely to exercise the presentation delivery workflow.',
+        strengths:[],key_risks:[]
+      },
+      findings:[],slide_assessments:[],anticipated_questions:[]
+    };
+    await fs.writeFile(path.join(project,'review/submission.yaml'),YAML.stringify(reviewerSubmission));
+    const reviewSubmitted=await cli('review','--project','first-run','--mode','submit');
+    expect(reviewSubmitted.code,reviewSubmitted.output).toBe(0);
+    const gatePrepared=await cli('readiness','--project','first-run','--mode','prepare');
+    expect(gatePrepared.code,gatePrepared.output).toBe(0);
+    const gateFile=path.join(project,'review/readiness-submission.yaml');
+    const gate=YAML.parse(await fs.readFile(gateFile,'utf8'));
+    gate.reviewer={
+      name:'Separate fixture reviewer',model:'synthetic-test-reviewer',independent_from_builder:true,
+      inspected:['approved-brief','slide-source'],
+      uninspected_material:'This is a synthetic workflow fixture without independent external source verification.'
+    };
+    gate.intended_audience='Only the automated test runner; no conference audience or domain claims are involved.';
+    gate.contribution_in_one_sentence='This fixture establishes that a reviewed draft can be packaged without implying scientific validity.';
+    gate.what_is_not_demonstrated='The fixture does not demonstrate biological results, credible novelty or model performance.';
+    for(const key of Object.keys(gate.checks)) gate.checks[key]={
+      status:'pass',
+      assessment:'No scientific assertions are made beyond the literal input plan in this fictional test case.',
+      evidence_or_gap:'The retained synthetic source and the rendered slide content explicitly state no measured results.',
+      presenter_action:'No additional work required on this fictional test fixture.'
+    };
+    gate.alternatives=[{
+      approach:'Direct static-slide construction',relevance:'not-relevant',
+      comparison:'No methodological comparison is warranted for this synthetic content-preservation fixture.',
+      evidence_or_gap:'This is a software integration test rather than a scientific methods evaluation.'
+    }];
+    gate.capabilities=[{
+      claim:'The packaging command can include a current readiness attestation in its manifest.',
+      status:'conceptual',
+      evidence_or_limit:'Only the software integration path is checked; no scientific claims are certified.'
+    }];
+    gate.expert_questions=[1,2,3].map(i=>({
+      question:'What kind of scientific evidence is deliberately absent from test fixture '+i+'?',
+      answer_status:'supported',
+      defensible_answer_or_gap:'The fixture contains a plan with no measured scientific results, which is visible in the source.'
+    }));
+    gate.verdict='ready';
+    await fs.writeFile(gateFile,YAML.stringify(gate));
+    const gateSubmitted=await cli('readiness','--project','first-run','--mode','submit');
+    expect(gateSubmitted.code,gateSubmitted.output).toBe(0);
+    const allowed=await cli('bundle','--project','first-run');
+    expect(allowed.code,allowed.output).toBe(0);
+    const result=JSON.parse(allowed.output);
+    const manifest=JSON.parse(await fs.readFile(result.manifest,'utf8'));
+    expect(manifest.scientificReadiness.status).toBe('ready');
+    expect(manifest.scientificReadiness.recordSha256).toMatch(/^[a-f0-9]{64}$/);
   },120000);
   test('Markdown plan respects order and copies body without invention',async()=>{
     const input=path.join(sandbox,'plan');await fs.mkdir(input);
