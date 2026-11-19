@@ -5,6 +5,7 @@ import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
 import JSZip from 'jszip';
 import YAML from 'yaml';
 import sharp from 'sharp';
@@ -205,6 +206,7 @@ describe('complete local workflow',()=>{
     const approval={
       version:1,approved_by:'Fixture Presenter',approved_at:new Date().toISOString(),
       revision:pending.revision,record_sha256:pending.record_sha256,
+      ledger_sha256:createHash('sha256').update(await fs.readFile(path.join(project,'review/ledger.yaml'))).digest('hex'),
       acknowledgement:{
         scientific_positioning_read:true,methods_and_limitations_understood:true,
         expert_questions_reviewed:true,unresolved_findings_reviewed:true
