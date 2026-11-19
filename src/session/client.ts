@@ -2,6 +2,7 @@ import * as Y from 'yjs';
 import type { SessionSnapshot, Operation, TextState } from './contracts.js';
 import { textKey } from './contracts.js';
 import type { SceneObject } from '../core/scene.js';
+import { fetchReadiness, openReadinessStudio, readinessLabel, type ReadinessView } from './readiness-client.js';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 let state: SessionSnapshot;
@@ -10,6 +11,7 @@ let notice = '', error = false, editing = false, exportBusy = false, authorized 
 let viewMode: 'reference'|'draft' = 'reference';
 let downloads:string[] = [], previewLocale='';
 let events: EventSource | undefined;
+let readiness: ReadinessView | undefined;
 let stateSignature='';
 const docs = new Map<string, { doc:Y.Doc; text:Y.Text; generation:string }>();
 const drafts = new Map<string,string>();
@@ -112,7 +114,7 @@ function render() {
   if (!state) return;
   const focusedObject=(document.activeElement as HTMLElement|null)?.dataset.objectId;
   const slide = selectedSlide();
-  app.innerHTML = `<header class="app-header"><div class="brand">PPT<span>imistic</span></div><div class="project-heading"><strong>${escape(state.title)}</strong><br><small>Shared studio · revision ${state.revision}</small></div><div class="header-spacer"></div><div id="presence" class="avatars"></div><div class="connection"><span class="dot ${online?'':'offline'}"></span><span class="connection-label">${online?'Live collaboration':'Reconnecting…'}</span></div><div class="export-menu"><button data-action="export-menu" class="primary" ${exportBusy?'disabled':''}>${exportBusy?'Building…':'Export ↗'}</button><div id="export-options" class="export-options" hidden><button data-action="export">Editable PowerPoint</button><button data-action="export-render">PowerPoint + previews</button></div></div></header><div id="notice"></div>${state.briefReady===false?'<div class="reference-notice" role="alert">Creator brief approval is required before exporting. Run the CLI <code>npm run brief -- --project '+escape(state.project)+'</code> and review the presentation goal with the creator.</div>':''}<div class="workspace"><aside class="slide-sidebar"><div class="section-label">Slides <span>${state.slides.length}</span></div>${state.slides.map((s,i) => `<button class="slide-card ${s.id===slideId?'selected':''}" data-slide="${escape(s.id)}" aria-label="Slide ${i+1}: ${escape(s.id)}" aria-current="${s.id===slideId?'true':'false'}"><div class="slide-mini"><div class="mini-title">${escape(s.scene?.objects.find(o=>o.role==='title')?.text ?? s.id)}</div><div class="mini-line"></div><div class="mini-line" style="width:45%"></div></div><div class="slide-card-footer"><strong>${String(i+1).padStart(2,'0')}</strong><span>${escape(s.id)}</span><span title="${escape(s.status)}">${s.locked||s.status==='locked'?'▣':s.status==='approved'?'✓':'○'}</span></div></button>`).join('')}</aside><main class="editor-main"><div class="toolbar"><span class="slide-name">${escape(slide?.id ?? '')} <span class="badge">${escape(slide?.status ?? '')}</span></span><select id="locale" aria-label="Output language">${state.locales.map(l=>`<option ${l===locale?'selected':''}>${escape(l)}</option>`).join('')}</select><button data-action="undo" ${state.history.some(h=>h.actor.id===state.actor.id&&!h.undone)&&canEdit()?'':'disabled'} title="Undo your latest change">↶ Undo</button><button data-action="add-text" ${canEdit()?'':'disabled'}>+ Text</button><button data-action="add-shape" ${canEdit()?'':'disabled'}>+ Shape</button></div><div class="canvas-space"><div class="canvas-meta"><span>Slide ${state.slides.findIndex(s=>s.id===slideId)+1} / ${state.slides.length}</span><span>${escape(locale)} · native objects</span></div><div id="canvas" class="canvas" role="group" aria-label="Editable slide"></div><div class="canvas-footer"><span>${escape(slide?.scene?.width.toFixed(2) ?? '')} × ${escape(slide?.scene?.height ?? '')} in</span><span>Drag to position · Arrow keys to nudge · Shift for larger steps</span></div></div><section class="notes-panel"><div class="notes-heading"><h3>Speaker notes</h3><small>Shared with collaborators</small></div>${textArea('notes', 'Speaker notes', slide?.scene?.notes ?? '',3)}</section></main><aside class="inspector"><div class="tabs" role="tablist">${[['properties','Design'],['comments','Comments'],['activity','Activity']].map(([id,label])=>`<button data-tab="${id}" role="tab" aria-selected="${tab===id}" class="${tab===id?'active':''}">${label}${id==='comments'&&state.comments.filter(c=>c.slideId===slideId&&!c.resolved).length?` (${state.comments.filter(c=>c.slideId===slideId&&!c.resolved).length})`:''}</button>`).join('')}</div><div class="panel" id="panel">${renderPanel()}</div></aside></div>`;
+  app.innerHTML = `<header class="app-header"><div class="brand">PPT<span>imistic</span></div><div class="project-heading"><strong>${escape(state.title)}</strong><br><small>Shared studio · revision ${state.revision}</small></div><div class="header-spacer"></div><div id="presence" class="avatars"></div><div class="connection"><span class="dot ${online?'':'offline'}"></span><span class="connection-label">${online?'Live collaboration':'Reconnecting…'}</span></div><button data-action="review-cockpit" class="readiness-launch" title="Read the scientific review and record human sign-off">Scientific review <strong id="readiness-indicator">Open review</strong></button><div class="export-menu"><button data-action="export-menu" class="primary" ${exportBusy?'disabled':''}>${exportBusy?'Building…':'Export ↗'}</button><div id="export-options" class="export-options" hidden><button data-action="export">Editable PowerPoint</button><button data-action="export-render">PowerPoint + previews</button></div></div></header><div id="notice"></div>${state.briefReady===false?'<div class="reference-notice" role="alert">Creator brief approval is required before exporting. Run the CLI <code>npm run brief -- --project '+escape(state.project)+'</code> and review the presentation goal with the creator.</div>':''}<div class="workspace"><aside class="slide-sidebar"><div class="section-label">Slides <span>${state.slides.length}</span></div>${state.slides.map((s,i) => `<button class="slide-card ${s.id===slideId?'selected':''}" data-slide="${escape(s.id)}" aria-label="Slide ${i+1}: ${escape(s.id)}" aria-current="${s.id===slideId?'true':'false'}"><div class="slide-mini"><div class="mini-title">${escape(s.scene?.objects.find(o=>o.role==='title')?.text ?? s.id)}</div><div class="mini-line"></div><div class="mini-line" style="width:45%"></div></div><div class="slide-card-footer"><strong>${String(i+1).padStart(2,'0')}</strong><span>${escape(s.id)}</span><span title="${escape(s.status)}">${s.locked||s.status==='locked'?'▣':s.status==='approved'?'✓':'○'}</span></div></button>`).join('')}</aside><main class="editor-main"><div class="toolbar"><span class="slide-name">${escape(slide?.id ?? '')} <span class="badge">${escape(slide?.status ?? '')}</span></span><select id="locale" aria-label="Output language">${state.locales.map(l=>`<option ${l===locale?'selected':''}>${escape(l)}</option>`).join('')}</select><button data-action="undo" ${state.history.some(h=>h.actor.id===state.actor.id&&!h.undone)&&canEdit()?'':'disabled'} title="Undo your latest change">↶ Undo</button><button data-action="add-text" ${canEdit()?'':'disabled'}>+ Text</button><button data-action="add-shape" ${canEdit()?'':'disabled'}>+ Shape</button></div><div class="canvas-space"><div class="canvas-meta"><span>Slide ${state.slides.findIndex(s=>s.id===slideId)+1} / ${state.slides.length}</span><span>${escape(locale)} · native objects</span></div><div id="canvas" class="canvas" role="group" aria-label="Editable slide"></div><div class="canvas-footer"><span>${escape(slide?.scene?.width.toFixed(2) ?? '')} × ${escape(slide?.scene?.height ?? '')} in</span><span>Drag to position · Arrow keys to nudge · Shift for larger steps</span></div></div><section class="notes-panel"><div class="notes-heading"><h3>Speaker notes</h3><small>Shared with collaborators</small></div>${textArea('notes', 'Speaker notes', slide?.scene?.notes ?? '',3)}</section></main><aside class="inspector"><div class="tabs" role="tablist">${[['properties','Design'],['comments','Comments'],['activity','Activity']].map(([id,label])=>`<button data-tab="${id}" role="tab" aria-selected="${tab===id}" class="${tab===id?'active':''}">${label}${id==='comments'&&state.comments.filter(c=>c.slideId===slideId&&!c.resolved).length?` (${state.comments.filter(c=>c.slideId===slideId&&!c.resolved).length})`:''}</button>`).join('')}</div><div class="panel" id="panel">${renderPanel()}</div></aside></div>`;
   const exportButton=app.querySelector<HTMLButtonElement>('[data-action="export-menu"]');
   if(exportButton && state.exportBlocked){exportButton.disabled=true;exportButton.title=state.briefReady===false?'Approve the creator brief before exporting.':'Export is unavailable until this presentation’s custom layout and media are supported.';}
   if(slide?.reference) {
@@ -125,7 +127,7 @@ function render() {
     const nativeStatus=slide.reference.status==='pending'?'Rendering the latest text changes; the image is temporarily out of date.':slide.reference.status==='failed'?`The preview could not be updated: ${escape(slide.reference.error??'renderer unavailable')}.`:'Click a text object to edit it; videos can be played.';
     app.querySelector('.canvas-meta')?.insertAdjacentHTML('afterend',`<div class="reference-notice">${viewMode==='reference'?nativeStatus:'Generic draft editor. Its layout differs from the original; changes are not yet applied to the original PowerPoint.'}${state.exportBlocked?' PowerPoint export is unavailable for this trial.':''}</div>`);
   }
-  renderCanvas(); renderPresence(); renderNotice(); enrichControls();
+  renderCanvas(); renderPresence(); renderNotice(); enrichControls(); updateReadinessBadge();
   if(focusedObject)document.querySelector<HTMLElement>(`[data-object-id="${CSS.escape(focusedObject)}"]`)?.focus({preventScroll:true});
 }
 
@@ -365,6 +367,14 @@ app.addEventListener('click',event=> {
   if(data.historyUndo)void request('/api/undo',{id:data.historyUndo,expectedRevision:state.revision,authorize:authorized?[slideId]:[]}).catch(showError);
   if(data.action==='dismiss'){notice='';renderNotice();}
   if(data.action==='reference-view'||data.action==='draft-view'){viewMode=data.action==='reference-view'?'reference':'draft';objectId='';editing=false;render();}
+  if(data.action==='review-cockpit') {
+    void openReadinessStudio({
+      isOwner:state.actor.role==='owner',
+      onOpenSlide:id=>{slideId=id;objectId='';tab='comments';render();},
+      onUpdate:data=>{readiness=data;updateReadinessBadge();},
+      onFeedback:(message,isError)=>{if(isError)showError(message);else inform(message);}
+    });return;
+  }
   if(data.action==='export-menu'){const menu=document.querySelector<HTMLElement>('#export-options')!;menu.hidden=!menu.hidden;}
   if(data.action==='export'||data.action==='export-render')void exportDeck(data.action==='export-render');
   if(data.action==='undo'){const h=state.history.slice().reverse().find(h=>h.actor.id===state.actor.id&&h.slideId===slideId&&!h.undone);if(h)void request('/api/undo',{id:h.id,expectedRevision:state.revision,authorize:authorized?[slideId]:[]}).catch(showError);}
@@ -375,12 +385,12 @@ app.addEventListener('click',event=> {
 });
 async function exportDeck(renderPreview:boolean) {
   exportBusy=true;render();
-  try {const result=await request('/api/export',{locale,render:renderPreview}); downloads=Array.isArray(result.files)?result.files.filter((f:unknown)=>typeof f==='string'):[];previewLocale=result.render?.available?locale:'';inform(`Export complete.${result.render?.message?` ${result.render.message}`:''}`);}
+  try {const result=await request('/api/export',{locale,render:renderPreview}); downloads=Array.isArray(result.files)?result.files.filter((f:unknown)=>typeof f==='string'):[];previewLocale=result.render?.available?locale:'';inform(`${result.draft?'Draft built for review. Final download requires scientific sign-off.':'Export complete.'}${result.render?.message?` ${result.render.message}`:''}`);void refreshReadinessBadge();}
   catch(cause){showError(cause);}finally{exportBusy=false;render();}
 }
 async function load() {
   events?.close();
-  try { const snapshot=await request(`/api/state${locale?`?locale=${encodeURIComponent(locale)}`:''}`);accept(snapshot.state??snapshot);connect(); }
+  try { const snapshot=await request(`/api/state${locale?`?locale=${encodeURIComponent(locale)}`:''}`);accept(snapshot.state??snapshot);connect();void refreshReadinessBadge(); }
   catch(cause){ if(!state)joinScreen(cause instanceof Error&& !/401|unauthorized|join|authentication/i.test(cause.message)?cause.message:'');else showError(cause); }
 }
 function connect() {
@@ -389,6 +399,24 @@ function connect() {
   events.addEventListener('presence',()=>{void request(`/api/state?locale=${encodeURIComponent(locale)}`).then(s=>accept(s.state??s)).catch(()=>{});});
   events.onopen=()=>{online=true;if(!editing&&!dragging)render();};events.onerror=()=>{online=false;if(!editing&&!dragging)render();};
 }
+
+function updateReadinessBadge() {
+  const node=document.querySelector<HTMLElement>('#readiness-indicator');
+  if (!node) return;
+  node.textContent=readiness ? readinessLabel(readiness.status.status) : 'Open review';
+  node.className=readiness?.status.can_deliver?'rd-ready':readiness?.status.status==='not-ready'?'rd-blocked':'';
+  const plain=document.querySelector<HTMLButtonElement>('[data-action="export"]');
+  const withPreview=document.querySelector<HTMLButtonElement>('[data-action="export-render"]');
+  if (readiness?.status.required && !readiness.status.can_deliver) {
+    if(plain)plain.textContent='Build draft (review only)';
+    if(withPreview)withPreview.textContent='Build draft + previews';
+  }
+}
+async function refreshReadinessBadge() {
+  try { readiness=await fetchReadiness();updateReadinessBadge(); }
+  catch(error) { showError(error); }
+}
+
 function joinScreen(message='') {
   const hash=new URLSearchParams(location.hash.slice(1));
   app.innerHTML=`<main class="join-screen"><form id="join-form" class="join-card"><div class="brand">PPT<span>imistic</span></div><h1>A shared space for<br>your next presentation.</h1><p>Join this local session to work on editable slides, leave feedback, and review agent proposals together.</p><label>Your name<input id="join-name" autocomplete="name" required maxlength="100" placeholder="How should we call you?"></label><label>Session token<input id="join-token" type="password" autocomplete="off" required value="${escape(hash.get('token')??'')}" placeholder="Paste your invitation token"></label><div id="join-error" class="join-error" role="alert">${escape(message)}</div><button type="submit" class="primary">Join the studio →</button><p style="font-size:10px;margin:16px 0 0">Files stay with the local session server. Your role is determined by your invitation.</p></form></main>`;

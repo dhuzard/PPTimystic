@@ -616,10 +616,31 @@ export class SessionStore extends EventEmitter {
     if (await exists(await safePath(this.loaded.dir, 'content/.block-session-export'))) fail(409, 'This trial uses a presentation with custom layouts or media. Session export is disabled because the generic renderer cannot reproduce the original PowerPoint.');
     const { locale, render } = z.object({ locale: z.string(), render: z.boolean().default(false) }).strict().parse(raw);
     if (!this.loaded.config.output_locales.includes(locale)) fail(400, 'Unknown output language.');
+    const { readinessStatus } = await import('../review/readiness.js');
+    const before = await readinessStatus(this.project);
+    // Never regenerate an approved PowerPoint merely to download it: builds
+    // can change the artifact hash, invalidating the presenter's sign-off.
+    if (before.required && before.can_deliver) {
+      const { inspectArtifacts } = await import('../core/artifacts.js');
+      const artifacts = await inspectArtifacts(this.project, locale);
+      if (artifacts.some(artifact => artifact.status !== 'current'))
+        fail(409, 'The approved PowerPoint is no longer current. Rebuild, review, and sign again.');
+      const previews = render ? await renderProject(this.project, locale) : undefined;
+      return { files: [`presentation.${locale}.pptx`], render: previews, draft: false, readiness: before };
+    }
     const result = await buildProject(this.project, { locale, authorize: this.metadata.authorized });
     this.metadata.authorized = []; await this.persist();
     const previews = render ? await renderProject(this.project, locale) : undefined;
-    this.notify(); return { files: result.files.map(file => path.basename(file)), report: result.report, render: previews };
+    const current = await readinessStatus(this.project);
+    this.notify();
+    return {
+      files: current.can_deliver ? result.files.map(file => path.basename(file)) : [],
+      report: result.report, render: previews, draft: current.required && !current.can_deliver,
+      readiness: current,
+      message: current.required && !current.can_deliver
+        ? 'Draft built for inspection. Final PowerPoint download requires scientific review and a human sign-off.'
+        : 'Export is ready.'
+    };
   }
   async assetFile(relative: string) {
     const referenced = this.loaded.deck.slides.some(slide => slide.visual?.asset === relative || slide.objects?.some(object => object.asset === relative));

@@ -32,6 +32,12 @@ Open the studio directly. The generic human-review overlay can intercept applica
 
 Verify that the editing controls are reachable. Use a disposable fictional project for tests that write text or images. Give the creator the live invitation URL and end the turn with the studio running; do not run `human-review poll` for this native mode. Read native comments and session state when resuming work.
 
+## Mandatory final scientific review in the HTML studio
+
+For every real presentation, after the independent scientific reviewer has submitted the current scientific readiness assessment, open the native studio with `npm run session -- --project NAME --port 0` and provide the **owner invitation** to the presenter. The presenter must click **Scientific review** and read the six checks, comparisons, concrete findings, implementation-versus-proposal classification and anticipated expert questions. The panel supports per-finding accept/reject/defer/request-alternative decisions and links to slide comments. An agent must not sign off on the creator's behalf.
+
+The presenter explicitly acknowledges the four scientific-readiness statements and approves the current revision, or records an explanatory risk override *and then* signs the current revision. The readiness gate blocks `bundle` and the studio's final PPTX download until this is complete. A NOT READY assessment must be displayed with its real risks rather than hidden under a cosmetic READY message. The reviewer itself still runs outside the browser; do not describe its execution as a browser feature. See `docs/readiness-gate.md`.
+
 ## Storyline and prose
 
 Use the installed generic human-review workflow for a document such as:

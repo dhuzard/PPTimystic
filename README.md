@@ -33,6 +33,7 @@ npm run review -- --project my-talk --mode status  # Scientific review–revisio
 npm run readiness -- --project my-talk --mode prepare   # Reviewer fills the structured assessment
 npm run readiness -- --project my-talk --mode submit    # Validate the independent verdict
 npm run readiness -- --project my-talk --mode status    # Fail closed if NOT READY or stale
+npm run session -- --project my-talk --port 0          # Owner reads the HTML review and signs off manually
 npm run bundle -- --project my-talk                    # Final delivery requires the gate
 npm run validate -- --project my-talk         # Check source, slides and outputs
 npm run render -- --project my-talk           # Optional; needs a local renderer

@@ -193,3 +193,24 @@ test('external retained image changes revoke stored export authorization and inv
   expect((await api('/api/export',{locale:'en-US'})).status).toBeGreaterThanOrEqual(400);
   await fs.writeFile(file('assets/reference/idea.svg'),image);
 });
+
+
+test('scientific readiness report is readable by session members but only owner can sign or override',async()=>{
+  const report=await api('/api/readiness',undefined,reviewer);
+  expect(report.status).toBe(200);
+  expect(report.value.status).toBeDefined();
+  const payload={
+    revision:'a'.repeat(64),record_sha256:'b'.repeat(64),
+    acknowledgement:{
+      scientific_positioning_read:true,methods_and_limitations_understood:true,
+      expert_questions_reviewed:true,unresolved_findings_reviewed:true
+    }
+  };
+  expect((await api('/api/readiness/approve',payload,reviewer)).status).toBe(403);
+  expect((await api('/api/readiness/approve',payload,editor)).status).toBe(403);
+  expect((await api('/api/readiness/override',{revision:payload.revision,record_sha256:payload.record_sha256,
+    reason:'The presenter explicitly acknowledges the remaining scientific uncertainty.',confirmed:true},editor)).status).toBe(403);
+  expect((await api('/api/readiness/finding',{id:'REV-001',decision:'accept'},editor)).status).toBe(403);
+  // Even the owner cannot sign a project with no independent review.
+  expect((await api('/api/readiness/approve',payload,owner)).status).toBeGreaterThanOrEqual(400);
+});

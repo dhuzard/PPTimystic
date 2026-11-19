@@ -101,7 +101,8 @@ export async function bundleProject(name: string, options: BundleOptions = {}) {
       scientificReadiness: {
         status: readiness.status, verdict: readiness.verdict ?? null, revision: readiness.revision ?? null,
         recordSha256: readiness.record_sha256 ?? null, risks: readiness.risks,
-        humanOverride: readiness.override ?? null
+        humanOverride: readiness.override ?? null,
+        humanApproval: readiness.human_approval ?? null
       },
       visualInspection: 'Not performed by bundling. Review individual preview images before delivery.' };
     await fs.writeFile(path.join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2));

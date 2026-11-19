@@ -58,6 +58,8 @@ The readiness process produces:
 - review/readiness.md — human-readable scientific readiness report
 - review/readiness-submission.yaml — reviewer draft; incomplete placeholders cannot pass schema validation
 
+**An independent AI verdict is not human approval.** The authenticated presenter must open the HTML studio, review the complete report, acknowledge its four statements and sign off on the exact current revision. Without this final manual sign-off, **all real-project final downloads and bundles are blocked**, even when the reviewer says READY.
+
 **NOT READY** or any unresolved critical/major scientific finding blocks bundling. A stale review, missing assessment or changed source/asset/output blocks bundling irrespective of previously recorded approval. **READY WITH WARNINGS** allows bundling only when there are no unresolved critical/major findings; the warnings remain visible.
 
 The gate deliberately distinguishes *scientific readiness* from *scientific truth*. A structured AI review cannot prove scientific correctness. Its findings remain accountable to a human scientific expert. External edits made to a delivered PowerPoint must first be reconciled with the reviewed source.
@@ -72,12 +74,24 @@ npm run readiness -- --project my-talk --mode override \
   --reason "I accept the unresolved methodological positioning and will explicitly disclose its limits."
 ~~~
 
-The CLI asks for an interactive confirmation, default **No**. It writes the presenter, reason, timestamp and a hash bound to the assessed revision. The delivery manifest records the override and outstanding risks. An override cannot excuse no review, invalid files, stale evidence or missing provenance. Non-interactive agents cannot approve an override through the CLI.
+The CLI asks for an interactive confirmation, default **No**. The HTML studio also provides a human-only risk override requiring a substantive reason and an explicit acknowledgment; a separate final presenter sign-off is still required. It writes the presenter, reason, timestamp and a hash bound to the assessed revision. The delivery manifest records the override and outstanding risks. An override cannot excuse no review, invalid files, stale evidence or missing provenance. Non-interactive agents cannot approve an override through the CLI.
 
 ## Change invalidation and limits
 
 A gate decision is bound to the deck/source revision and source fingerprints, including relevant assets. Changes to slides, inputs, translations, themes or output PowerPoint files require a fresh assessment. A human override is bound to the exact prior reviewer record and does not silently apply to modified assessments.
 
 The deterministic CLI validates structure, source freshness, substantive fields, reviewer-verdict consistency, unresolved review findings and recorded overrides. It **cannot** independently verify that the reviewer truly understood the field, that the sources support every assessment, or that the speaker has rehearsed the answers. For high-stakes talks, use a real expert rehearsal and retain unresolved concerns in the final speaker notes.
+
+## HTML review experience
+
+Launch the existing browser studio (the project must first be created and its brief approved):
+
+~~~sh
+npm run session -- --project my-talk --port 0
+~~~
+
+Join using the **owner invitation**, then select **Scientific review** in the header. The panel shows the independent verdict, six scientific checks, methodological alternatives, actual versus proposed capabilities, open findings and expert Q&A. The owner can accept, reject, defer or request an alternative to each finding without using a CLI command; clicking a slide opens its existing comment thread. **Only the owner** can acknowledge the four final statements. The server records `review/readiness-approval.json` with the scientific-readiness record SHA, **the scientific findings ledger SHA**, and the exact deck revision; any changed finding, decision, review, or deck makes sign-off stale. Reviewers and editors can read but not approve. The actual download endpoint and final `bundle` both enforce the same readiness status.
+
+The browser currently **displays** the scientific reviewer report and collects decisions; it does **not yet execute** the independent AI reviewer or create projects without the existing setup process. A future project-launch/onboarding screen is still needed for a genuinely no-terminal first-run experience. A user can manually copy a file from the local working directory, which software cannot prevent.
 
 Legacy/demo projects without the approved-brief workflow are not automatically migrated. Newly created real projects have the workflow enabled. Existing real projects should be migrated to the approved-brief workflow so the gate cannot be skipped by labeling them as demos.
