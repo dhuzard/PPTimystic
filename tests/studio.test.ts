@@ -107,7 +107,7 @@ describe('complete local workflow',()=>{
     expect(await fs.readFile(path.join(sandbox,'projects/second/inputs/study.txt'),'utf8')).toContain('8 mg');
     expect(await fs.readFile(file('inputs/precious.txt'),'utf8')).toContain('Keep this research');
   });
-  test('clean first-run path imports local sources, completes a manual translation, validates, renders optionally and bundles',async()=>{
+  test('clean first-run path builds and renders but cannot bundle without independent scientific readiness',async()=>{
     const input=path.join(sandbox,'first-run-documents');await fs.mkdir(input);await fs.writeFile(path.join(input,'plan.md'),'# Plan\n\n## First observation\nThe supplied plan reports no measured result.');
     const created=await cli('new','--yes','--project','first-run','--inputs',input,'--from-plan','--locales','en-US','--no-render');
     expect(created.code,created.output).toBe(0);
@@ -130,9 +130,12 @@ describe('complete local workflow',()=>{
     expect((await cli('validate','--project','first-run')).code).toBe(0);
     const rendered=await cli('render','--project','first-run','--renderer','libreoffice');expect(rendered.code,rendered.output).toBe(0);
     expect(rendered.output).toMatch(/Rendered with|No complete local renderer/);
-    const bundled=await cli('bundle','--project','first-run');expect(bundled.code,bundled.output).toBe(0);
-    const result=JSON.parse(bundled.output);expect(result.includedInputs).toEqual([]);
-    expect(await fs.readFile(result.manifest,'utf8')).toContain('originalInputsIncluded');
+    const bundled=await cli('bundle','--project','first-run');
+    expect(bundled.code).not.toBe(0);
+    expect(bundled.output).toContain('Scientific Positioning & Readiness Gate blocked delivery');
+    const readiness=await cli('readiness','--project','first-run','--mode','status');
+    expect(readiness.code).not.toBe(0);
+    expect(readiness.output).toContain('No completed scientific review');
   },120000);
   test('Markdown plan respects order and copies body without invention',async()=>{
     const input=path.join(sandbox,'plan');await fs.mkdir(input);
