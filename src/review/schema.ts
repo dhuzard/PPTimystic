@@ -37,7 +37,7 @@ export const evidenceStatuses = ['requires-human-verification', 'source-read-by-
 export const inspections = ['source-yaml', 'storyline', 'brief', 'extracted-source', 'validation-report', 'geometry-report', 'rendered-preview'] as const;
 /** Review lenses (see agents/audience-panel.md). The default is the scientific presentation expert. */
 export const perspectives = ['scientific-expert', 'presentation-style', 'data-expert', 'design-critic', 'science-friend', 'reviewer-3',
-  'newcomer', 'decision-maker', 'field-rival', 'rigor-ethics', 'back-row'] as const;
+  'newcomer', 'decision-maker', 'field-rival', 'methods-specialist', 'rigor-ethics', 'back-row'] as const;
 /** A builder may block or report manual work; it can never defer or reject what the creator accepted. */
 export const builderOutcomes = ['blocked-needs-evidence', 'blocked-needs-creator', 'implemented-manually'] as const;
 export const wordingTargets = ['title', 'message', 'body', 'notes', 'caption', 'alt'] as const;
@@ -233,8 +233,9 @@ export const ledgerSchema = z.object({
     configured_at: z.string().datetime().optional()
   }).strict().default({ workflow: 'assisted', max_rounds: 2, autonomous_classes: [] }),
   review_rounds: z.number().int().min(0).default(0),
+  reviewed_revision: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   revision_rounds: z.number().int().min(0).default(0),
-  assessment: assessmentSchema.extend({ round: z.number().int().min(1), agent: z.string() }).optional(),
+  assessment: assessmentSchema.extend({ round: z.number().int().min(1), agent: z.string(), reviewed_revision: z.string().regex(/^[a-f0-9]{64}$/).optional() }).optional(),
   slide_assessments: z.record(slideId, slideAssessmentSchema.omit({ slide: true }).extend({ round: z.number().int().min(1), fingerprint: z.string() })).default({}),
   findings: z.array(findingRecordSchema).default([]),
   questions: z.array(questionRecordSchema).default([]),

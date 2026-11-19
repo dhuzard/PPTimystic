@@ -4,7 +4,7 @@
 
 PPTimistic is a local-first Node.js toolkit for building reproducible presentations with a coding agent or from the terminal. Text, shapes, diagrams, notes, and supported charts remain editable in PowerPoint. No account, paid provider or API key is required.
 
-[Français](README.fr.md) · [Creator onboarding](docs/onboarding.md) · [Full workflows](docs/workflows.md) · [Limitations](docs/limitations.md)
+[Français](README.fr.md) · [Creator onboarding](docs/onboarding.md) · [Scientific readiness gate](docs/readiness-gate.md) · [Full workflows](docs/workflows.md) · [Limitations](docs/limitations.md)
 
 ![PPTimistic collaborative studio](docs/studio-preview.png)
 
@@ -23,13 +23,17 @@ npm run new -- --project my-talk --inputs "path/to/sources" --no-render
 
 The **interactive** setup first asks for the title, languages and visual theme, then runs a **mandatory creator interview**. It collects the creator's profile and working preferences, the desired audience outcome, prior knowledge, key message, format/duration, content scope, evidence, caveats, tone, visuals and constraints. The creator reviews the summary and must explicitly approve it.
 
-The new project is then ready for slide authoring. **It does not turn imported documents into an AI-written presentation or silently export a fictional deck.** A person or coding agent must author `projects/my-talk/content/slides.yaml` based on the approved brief and sources.
+The new project is then ready for slide authoring. **Before drafting, independently challenge the scientific framing and relevant alternatives; before delivery, complete the mandatory [Scientific Positioning & Readiness Gate](docs/readiness-gate.md).** Draft PPTX builds are not approvals for delivery. **It does not turn imported documents into an AI-written presentation or silently export a fictional deck.** A person or coding agent must author `projects/my-talk/content/slides.yaml` based on the approved brief and sources.
 
 ```sh
 npm run brief -- --project my-talk --check    # Confirm the onboarding gate is open
 npm run build -- --project my-talk            # Generate editable PowerPoint
 npm run story -- --project my-talk            # Titles-only read-through and flow prompts
 npm run review -- --project my-talk --mode status  # Scientific review–revision loop (see docs/scientific-review.md)
+npm run readiness -- --project my-talk --mode prepare   # Reviewer fills the structured assessment
+npm run readiness -- --project my-talk --mode submit    # Validate the independent verdict
+npm run readiness -- --project my-talk --mode status    # Fail closed if NOT READY or stale
+npm run bundle -- --project my-talk                    # Final delivery requires the gate
 npm run validate -- --project my-talk         # Check source, slides and outputs
 npm run render -- --project my-talk           # Optional; needs a local renderer
 npm run bundle -- --project my-talk           # Verified delivery package

@@ -105,3 +105,19 @@ test('bundle refuses a stale presentation after source content changes', async (
     expect(run.output).toContain('older than the current project source');
   } finally { await fs.writeFile(source, original); }
 }, 60000);
+
+
+test('a real-project delivery bundle is blocked without a current scientific readiness gate', async () => {
+  const config = path.join(sandbox, 'projects/delivery/project.yaml');
+  const original = await fs.readFile(config, 'utf8');
+  const real = original.replace('brief_required: false', 'brief_required: true');
+  expect(real).not.toBe(original);
+  try {
+    await fs.writeFile(config, real);
+    const run = await cli('bundle', '--project', 'delivery');
+    expect(run.code).not.toBe(0);
+    expect(run.output).toContain('Scientific Positioning & Readiness Gate blocked delivery');
+  } finally {
+    await fs.writeFile(config, original);
+  }
+}, 60000);

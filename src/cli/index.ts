@@ -304,6 +304,35 @@ projectOption(cli.command('review').description('Scientific review–revision wo
       }
     }
   });
+projectOption(cli.command('readiness').description('Mandatory scientific positioning and expert-audience readiness gate for delivery of real projects'))
+  .requiredOption('--mode <mode>', 'prepare, submit, status or override')
+  .option('--file <path>', 'Completed independent readiness assessment (submit)', 'review/readiness-submission.yaml')
+  .option('--by <name>', 'Person explicitly overriding a NOT READY assessment (override)')
+  .option('--reason <text>', 'Substantive reason acknowledging the remaining risks (override)')
+  .action(async (_name, o) => {
+    const gate = await import('../review/readiness.js');
+    if (o.mode === 'prepare') print(await gate.prepareReadiness(o.project));
+    else if (o.mode === 'status') {
+      const status = await gate.readinessStatus(o.project);
+      print(status);
+      if (!status.can_deliver) process.exitCode = 1;
+    } else if (o.mode === 'submit') {
+      const { dir } = await loadProject(o.project);
+      const file = path.isAbsolute(o.file) ? o.file : await safePath(dir, o.file);
+      const status = await gate.submitReadiness(o.project, file);
+      print(status);
+      if (!status.can_deliver) process.exitCode = 1;
+    } else if (o.mode === 'override') {
+      if (!process.stdin.isTTY) throw new Error('Readiness overrides require an interactive human confirmation; agents cannot approve them.');
+      if (!o.by || !o.reason) throw new Error('The creator must give --by and a substantive --reason for any readiness override.');
+      const current = await gate.readinessStatus(o.project);
+      print(current);
+      const { confirm } = await import('@inquirer/prompts');
+      if (!await confirm({ message: 'I have read the blocking scientific findings and explicitly accept delivery despite these risks.', default: false }))
+        throw new Error('No readiness override recorded.');
+      print(await gate.overrideReadiness(o.project, o.by, o.reason, true));
+    } else throw new Error('Unknown readiness mode. Choose prepare, submit, status or override.');
+  });
 projectOption(cli.command('render').description('Create real slide PNG previews, PDF and a contact sheet with a local renderer'))
   .option('--locale <locale>','Render one language').option('--renderer <name>','auto, libreoffice or powerpoint','auto')
   .action(async (_name,o)=>{
