@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
 import { z } from 'zod';
-import { atomicWrite, exists, hash, loadProject, safePath, stamp, writeYaml } from '../core/io.js';
+import { atomicWrite, exists, hash, hashFile, loadProject, safePath, stamp, writeYaml } from '../core/io.js';
 import { sourceFingerprint } from '../core/build.js';
 import { deckRevision, inspectSourceAuthority } from './context.js';
 import { readLedger } from './workflow.js';
@@ -108,6 +108,7 @@ export const readinessApprovalSchema = z.object({
   approved_at: z.string().datetime(),
   revision: revisionSchema,
   record_sha256: revisionSchema,
+  ledger_sha256: revisionSchema,
   acknowledgement: readinessAcknowledgmentSchema,
   note: z.string().trim().max(2000).default('')
 }).strict();
@@ -197,7 +198,9 @@ export async function readinessStatus(project: string): Promise<ReadinessDecisio
   if (await exists(approvalPath)) {
     try {
       const approval = readinessApprovalSchema.parse(JSON.parse(await fs.readFile(approvalPath, 'utf8')));
-      if (approval.revision === revision && approval.record_sha256 === scientific.record_sha256)
+      const ledgerFile = await safePath(dir, 'review/ledger.yaml');
+      const ledgerSha = await exists(ledgerFile) ? await hashFile(ledgerFile) : undefined;
+      if (approval.revision === revision && approval.record_sha256 === scientific.record_sha256 && approval.ledger_sha256 === ledgerSha)
         return { ...scientific, human_approval: approval };
     } catch {
       // Invalid approval records must never unlock delivery.
@@ -358,9 +361,10 @@ export async function approveReadiness(project: string, input: {
   const record = await currentRecord(dir);
   if (!record || hash(JSON.stringify(record)) !== status.record_sha256)
     throw new Error('The independent scientific readiness record changed. Refresh before signing.');
+  const ledgerSha = await hashFile(await safePath(dir, 'review/ledger.yaml'));
   const approval = readinessApprovalSchema.parse({
     version: 1, approved_by: name, approved_at: new Date().toISOString(),
-    revision: status.revision, record_sha256: status.record_sha256,
+    revision: status.revision, record_sha256: status.record_sha256, ledger_sha256: ledgerSha,
     acknowledgement, note
   });
   const destination = await safePath(dir, readinessApprovalFile);
