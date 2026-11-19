@@ -199,6 +199,20 @@ export async function startSession(options: SessionOptions) {
         if (artifact.status !== 'current' || manifest.pptxSha256 !== artifact.sha256) fail(409, 'This preview is older than the current presentation. Render again.');
         response.writeHead(200, { 'Content-Type': 'image/png' }); response.end(await fs.readFile(file)); return;
       }
+      if (request.method === 'POST' && url.pathname === '/api/readiness/finding') {
+        if (actor.role !== 'owner') fail(403, 'Only the session owner can decide on scientific review findings.');
+        const input = z.object({
+          id: z.string().regex(/^REV-\d{3,}$/),
+          decision: z.enum(['accept', 'reject', 'defer', 'discuss', 'request-alternative']),
+          note: z.string().trim().max(2000).optional()
+        }).strict().parse(await jsonBody(request));
+        if (input.decision === 'request-alternative' && !input.note)
+          fail(400, 'Explain the alternative you want.');
+        const review = await import('../review/workflow.js');
+        const updated = await store.run(() => review.recordDecision(store.project, [input.id],
+          input.decision, actor.name, { note: input.note, authorize: [] }));
+        json(response, 200, { ok: true, result: updated }); return;
+      }
       if (request.method === 'POST' && url.pathname === '/api/readiness/approve') {
         if (actor.role !== 'owner') fail(403, 'Only the session owner can sign off scientific readiness.');
         const input = z.object({
