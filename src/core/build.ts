@@ -111,6 +111,7 @@ export async function loadProtectionBaseline(dir:string):Promise<{state:BuildSta
 }
 export async function buildProject(name: string, options: {locale?:string; authorize?:string[]}={}) {
   const {dir,config,deck,theme}=await loadProject(name);
+  if (await exists(await safePath(dir,'content/pptx-review-origin.json'))) throw new Error('Review-only project: PPTimystic must not rebuild or overwrite an imported PowerPoint. Produce review reports and recommendations instead.');
   if (deck.slides.some(slide=>slide.native_text && Object.keys(slide.native_text.objects).length)) throw new Error('This project contains edits to original PowerPoint objects. Generic build cannot preserve them; reconcile the native edits with the presentation-specific builder first.');
   const locales=options.locale ? [options.locale] : config.output_locales;
   const output=await safePath(dir,'output');
