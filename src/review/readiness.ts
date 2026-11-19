@@ -93,6 +93,25 @@ export type ReadinessRecord = z.infer<typeof readinessRecordSchema>;
 export const readinessFile = 'review/readiness.json';
 export const readinessReportFile = 'review/readiness.md';
 export const readinessDraftFile = 'review/readiness-submission.yaml';
+export const readinessApprovalFile = 'review/readiness-approval.json';
+
+export const readinessAcknowledgmentSchema = z.object({
+  scientific_positioning_read: z.literal(true),
+  methods_and_limitations_understood: z.literal(true),
+  expert_questions_reviewed: z.literal(true),
+  unresolved_findings_reviewed: z.literal(true)
+}).strict();
+
+export const readinessApprovalSchema = z.object({
+  version: z.literal(1),
+  approved_by: z.string().trim().min(2).max(160),
+  approved_at: z.string().datetime(),
+  revision: revisionSchema,
+  record_sha256: revisionSchema,
+  acknowledgement: readinessAcknowledgmentSchema,
+  note: z.string().trim().max(2000).default('')
+}).strict();
+export type ReadinessApproval = z.infer<typeof readinessApprovalSchema>;
 
 /** Covers reviewer context, outputs, and image/assets used to build the deck. */
 export async function readinessRevision(project: string) {
@@ -106,7 +125,7 @@ export async function readinessRevision(project: string) {
 
 export type ReadinessDecision = {
   required: boolean;
-  status: 'not-required' | 'not-reviewed' | 'stale' | 'not-ready' | 'ready-with-warnings' | 'ready' | 'overridden';
+  status: 'not-required' | 'not-reviewed' | 'stale' | 'not-ready' | 'ready-with-warnings' | 'ready' | 'overridden' | 'awaiting-human-approval';
   can_deliver: boolean;
   blockers: string[];
   risks: string[];
@@ -117,6 +136,7 @@ export type ReadinessDecision = {
   submitted_at?: string;
   override?: ReadinessRecord['override'];
   record_sha256?: string;
+  human_approval?: ReadinessApproval;
 };
 
 export function evaluateReadiness(
@@ -169,7 +189,24 @@ export async function readinessStatus(project: string): Promise<ReadinessDecisio
     return { required: true, status: 'not-ready', can_deliver: false,
       blockers: ['Invalid readiness record: ' + (error as Error).message], risks: [], unresolved_high_priority: [], revision };
   }
-  return evaluateReadiness(ledger, record, revision, reviewRevision);
+  const scientific = evaluateReadiness(ledger, record, revision, reviewRevision);
+  // The independent model's verdict is not the presenter's sign-off.
+  // A missing approval is blocking even for READY and READY WITH WARNINGS.
+  if (!scientific.can_deliver) return scientific;
+  const approvalPath = await safePath(dir, readinessApprovalFile);
+  if (await exists(approvalPath)) {
+    try {
+      const approval = readinessApprovalSchema.parse(JSON.parse(await fs.readFile(approvalPath, 'utf8')));
+      if (approval.revision === revision && approval.record_sha256 === scientific.record_sha256)
+        return { ...scientific, human_approval: approval };
+    } catch {
+      // Invalid approval records must never unlock delivery.
+    }
+  }
+  return {
+    ...scientific, status: 'awaiting-human-approval', can_deliver: false,
+    blockers: [...scientific.blockers, 'The presenter must personally review and sign off in the HTML studio before final delivery.']
+  };
 }
 
 export async function assertReadyForDelivery(project: string) {
@@ -276,5 +313,62 @@ export async function overrideReadiness(project: string, by: string, reason: str
   await atomicWrite(history, await fs.readFile(destination));
   await atomicWrite(destination, JSON.stringify(updated, null, 2));
   await atomicWrite(await safePath(dir, readinessReportFile), reportMarkdown(updated));
+  return readinessStatus(project);
+}
+
+
+/** Detailed, authenticated reviewer material for the studio; never auto-approves anything. */
+export async function readinessDetail(project: string) {
+  const { dir, config } = await loadProject(project);
+  const [status, ledger] = await Promise.all([readinessStatus(project), readLedger(dir)]);
+  const record = config.brief_required ? await currentRecord(dir).catch(() => undefined) : undefined;
+  return {
+    status, record,
+    assessment: ledger.assessment ?? null,
+    findings: ledger.findings.map(f => ({
+      id: f.id, slide_ids: f.slide_ids, title: f.title, severity: f.severity,
+      status: f.status, category: f.category, basis: f.basis,
+      observation: f.observation, rationale: f.rationale,
+      recommendation: f.recommendation, evidence_status: f.evidence.status
+    })),
+    questions: ledger.questions.map(q => ({
+      question: q.question, why_likely: q.why_likely, difficulty: q.difficulty,
+      answer_basis: q.answer_basis, answer_notes: q.answer_notes
+    }))
+  };
+}
+
+/** Only the authenticated studio owner or interactive CLI should invoke this. */
+export async function approveReadiness(project: string, input: {
+  approved_by: string;
+  revision: string;
+  record_sha256: string;
+  acknowledgement: unknown;
+  note?: string;
+}) {
+  const name = z.string().trim().min(2).max(160).parse(input.approved_by);
+  const acknowledgement = readinessAcknowledgmentSchema.parse(input.acknowledgement);
+  const note = z.string().trim().max(2000).parse(input.note ?? '');
+  const { dir } = await loadProject(project);
+  const status = await readinessStatus(project);
+  if (!status.required || !['awaiting-human-approval', 'ready', 'ready-with-warnings', 'overridden'].includes(status.status))
+    throw new Error('Scientific review must be current and all blocking findings resolved or explicitly overridden before human sign-off.');
+  if (!status.revision || input.revision !== status.revision || input.record_sha256 !== status.record_sha256)
+    throw new Error('The readiness review changed after you opened the report. Read the latest review and sign again.');
+  const record = await currentRecord(dir);
+  if (!record || hash(JSON.stringify(record)) !== status.record_sha256)
+    throw new Error('The independent scientific readiness record changed. Refresh before signing.');
+  const approval = readinessApprovalSchema.parse({
+    version: 1, approved_by: name, approved_at: new Date().toISOString(),
+    revision: status.revision, record_sha256: status.record_sha256,
+    acknowledgement, note
+  });
+  const destination = await safePath(dir, readinessApprovalFile);
+  if (await exists(destination)) {
+    const previous = await fs.readFile(destination);
+    await atomicWrite(await safePath(dir, 'review/history/' + stamp() +
+      '-' + crypto.randomUUID().slice(0, 8) + '.approval.json'), previous);
+  }
+  await atomicWrite(destination, JSON.stringify(approval, null, 2));
   return readinessStatus(project);
 }
