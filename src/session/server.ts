@@ -80,6 +80,11 @@ export async function startSession(options: SessionOptions) {
   } catch (error) { await releaseLease(); throw error; }
   const allowedHosts = new Set(['localhost','127.0.0.1','[::1]',host]);
   for (const addresses of Object.values(os.networkInterfaces())) for (const address of addresses ?? []) allowedHosts.add(address.family === 'IPv6' ? `[${address.address}]` : address.address);
+  let evidenceJob: {
+    progress: import('../evidence/pipeline.js').PipelineProgress;
+    abort: AbortController; startedAt: string;
+  } | undefined;
+  let evidenceLastError = '';
   let cookieName = 'pptimistic_session';
   let closing = false;
   let broadcastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -138,6 +143,36 @@ export async function startSession(options: SessionOptions) {
       const actor = identity.actor;
       const locale = url.searchParams.get('locale') ?? store.loaded.config.source_locale;
       if (request.method === 'GET' && url.pathname === '/api/state') { json(response, 200, await store.run(() => store.snapshot(actor, locale))); return; }
+      if (request.method === 'GET' && url.pathname === '/api/knowledge') {
+        const kb=await import('../evidence/workbench.js');
+        const status=await kb.knowledgeStatus(store.project);
+        json(response,200,{status,job:evidenceJob?.progress??null,startedAt:evidenceJob?.startedAt??null,
+          lastError:evidenceLastError,agentConfigured:Boolean(options.agentConfig),
+          transmitsExternally:Boolean(options.agentConfig?.usesExternalServices),
+          paidAgent:Boolean(options.agentConfig?.usesPaidServices)});return;
+      }
+      if (request.method === 'GET' && url.pathname === '/api/knowledge/notes') {
+        const kb=await import('../evidence/workbench.js');
+        const id=url.searchParams.get('source');
+        const plan=await kb.readKnowledgePlan(store.project);
+        const filename=id ? (plan?.sources.some(s=>s.id===id)?'knowledge/sources/'+id+'.md':undefined)
+          :'knowledge/README.md';
+        if(!filename)fail(404,'Unknown indexed source.');
+        const filenameSafe=await safePath(store.loaded.dir,filename);
+        if(!await exists(filenameSafe))fail(404,'Prepare a source workbench before reading notes.');
+        json(response,200,{markdown:(await fs.readFile(filenameSafe,'utf8')).slice(0,250_000)});return;
+      }
+      if (request.method === 'GET' && url.pathname === '/api/knowledge/synthesis') {
+        const file=await safePath(store.loaded.dir,'knowledge/SYNTHESIS.md');
+        if(!await exists(file))fail(404,'No completed synthesis. Analyze all sources first.');
+        const kb=await import('../evidence/workbench.js');
+        const status=await kb.knowledgeStatus(store.project);
+        const plan=await kb.readKnowledgePlan(store.project);
+        const stored=JSON.parse(await fs.readFile(await safePath(store.loaded.dir,'knowledge/synthesis.json'),'utf8'));
+        if(!status.complete||stored.revision!==plan?.revision)fail(409,'The synthesis is stale relative to the goal or sources.');
+        json(response,200,{markdown:(await fs.readFile(file,'utf8')).slice(0,300_000)});return;
+      }
+
       if (request.method === 'GET' && url.pathname === '/api/readiness') {
         const gate = await import('../review/readiness.js');
         json(response, 200, await store.run(() => gate.readinessDetail(store.project))); return;
@@ -247,6 +282,63 @@ export async function startSession(options: SessionOptions) {
         });
         json(response, 200, { ok: true, status: decision }); return;
       }
+      if (request.method === 'POST' && url.pathname === '/api/knowledge/upload') {
+        if(actor.role!=='owner')fail(403,'Only the session owner can import scientific sources.');
+        const name=url.searchParams.get('name')??'';
+        if(!/^[A-Za-z0-9][A-Za-z0-9 _.-]{0,110}\.(pdf|docx|pptx|md|txt|csv)$/i.test(name)||
+          name.includes('..'))fail(400,'Use a safe .pdf, .docx, .pptx, .md, .txt or .csv filename.');
+        const data=await body(request,25_000_000);
+        if(!data.length)fail(400,'Empty source file.');
+        if(/\.pdf$/i.test(name)&&!data.subarray(0,5).equals(Buffer.from('%PDF-')))fail(400,'Invalid PDF header.');
+        if(/\.(pptx|docx)$/i.test(name)&&!data.subarray(0,2).equals(Buffer.from('PK')))fail(400,'Invalid OOXML file header.');
+        const {ingest}=await import('../content/ingest.js');
+        const records=await store.run(async()=>{
+          const file=await safePath(store.loaded.dir,'inputs/'+name);
+          await fs.mkdir(path.dirname(file),{recursive:true});
+          try{await fs.writeFile(file,data,{flag:'wx'});}
+          catch(error){
+            if((error as NodeJS.ErrnoException).code!=='EEXIST')throw error;
+            if(await hashFile(file)!==hash(data))fail(409,'A source already exists under this filename with different contents.');
+          }
+          return ingest(store.loaded.dir);
+        });
+        json(response,200,{ok:true,files:records.map(({id,path,kind,error})=>({id,path,kind,error}))});return;
+      }
+      if (request.method === 'POST' && url.pathname === '/api/knowledge/prepare') {
+        if(actor.role!=='owner')fail(403,'Only the session owner can prepare a source workbench.');
+        const kb=await import('../evidence/workbench.js');
+        const status=await store.run(()=>kb.prepareKnowledge(store.project));
+        json(response,200,{ok:true,status});return;
+      }
+      if (request.method === 'POST' && url.pathname === '/api/knowledge/run') {
+        if(actor.role!=='owner')fail(403,'Only the owner can start source agents.');
+        if(!options.agentConfig)fail(409,'No agent provider configured. Source analysis cannot be simulated.');
+        const consent=z.object({confirmExternal:z.boolean().default(false),confirmPaid:z.boolean().default(false)}).strict().parse(await jsonBody(request));
+        if(options.agentConfig.usesExternalServices&&!consent.confirmExternal)
+          fail(403,'Explicitly consent to external processing of uploaded research sources.');
+        if(options.agentConfig.usesPaidServices&&!consent.confirmPaid)
+          fail(403,'Explicitly consent to potentially paid source-agent calls.');
+        if(evidenceJob && !['failed','cancelled','complete'].includes(evidenceJob.progress.phase))
+          fail(409,'A source analysis is already running.');
+        const abort=new AbortController();
+        const job={abort,startedAt:new Date().toISOString(),
+          progress:{phase:'idle' as const,done:0,total:0} as import('../evidence/pipeline.js').PipelineProgress};
+        evidenceJob=job;evidenceLastError='';
+        const {runEvidencePipeline}=await import('../evidence/pipeline.js');
+        void runEvidencePipeline(store.project,options.agentConfig,progress=>{
+          job.progress=progress;
+        },abort.signal).catch(error=>{
+          evidenceLastError=(error as Error).message;
+          job.progress={...job.progress,phase:abort.signal.aborted?'cancelled':'failed',error:evidenceLastError};
+        });
+        json(response,202,{ok:true,job:job.progress});return;
+      }
+      if (request.method === 'POST' && url.pathname === '/api/knowledge/cancel') {
+        if(actor.role!=='owner')fail(403,'Only the owner can cancel source analysis.');
+        if(!evidenceJob)fail(404,'No running analysis.');
+        evidenceJob.abort.abort();
+        json(response,200,{ok:true});return;
+      }
       if (request.method === 'POST' && url.pathname === '/api/uploads') {
         if (actor.role === 'reviewer') fail(403, 'Reviewers cannot upload images.');
         if (!['image/png','image/jpeg','image/webp'].includes(request.headers['content-type'] ?? '')) fail(415, 'Upload PNG, JPEG, or WebP.');
@@ -318,7 +410,7 @@ export async function startSession(options: SessionOptions) {
   worker?.schedule();
   nativeWorker?.schedule();
   const close = async () => {
-    if (closing) return; closing = true;
+    if (closing) return; closing = true; evidenceJob?.abort.abort();
     clearInterval(heartbeat); clearInterval(watcher); clearTimeout(broadcastTimer); await worker?.stop(); await nativeWorker?.stop();
     for (const stream of streams) stream.response.end(); streams.clear();
     await new Promise<void>(resolve => { server.close(() => resolve()); server.closeAllConnections(); });
