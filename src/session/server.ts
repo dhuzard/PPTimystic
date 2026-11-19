@@ -143,6 +143,30 @@ export async function startSession(options: SessionOptions) {
       const actor = identity.actor;
       const locale = url.searchParams.get('locale') ?? store.loaded.config.source_locale;
       if (request.method === 'GET' && url.pathname === '/api/state') { json(response, 200, await store.run(() => store.snapshot(actor, locale))); return; }
+      if (request.method === 'GET' && url.pathname === '/api/brief') {
+        const {readCreatorBrief,creatorBriefStatus}=await import('../core/brief.js');
+        json(response,200,{brief:await readCreatorBrief(store.loaded.dir),
+          status:await creatorBriefStatus(store.loaded.dir,store.loaded.config)});return;
+      }
+      if (request.method === 'POST' && url.pathname === '/api/brief/save') {
+        if(actor.role!=='owner')fail(403,'Only the presentation owner may modify the goal and audience.');
+        const draft=await jsonBody(request);
+        const {saveCreatorBriefDraft}=await import('../core/brief.js');
+        const updated=await store.run(()=>saveCreatorBriefDraft(store.loaded.dir,store.loaded.config,draft));
+        json(response,200,{ok:true,status:updated});return;
+      }
+      if (request.method === 'POST' && url.pathname === '/api/brief/approve') {
+        if(actor.role!=='owner')fail(403,'Only the presentation owner may approve the goal.');
+        await jsonBody(request);
+        const {readCreatorBrief,approveCreatorBrief,saveCreatorBrief,creatorBriefStatus}=await import('../core/brief.js');
+        const updated=await store.run(async()=>{
+          const raw=await readCreatorBrief(store.loaded.dir);
+          const approved=approveCreatorBrief(raw,store.loaded.config,actor.name);
+          await saveCreatorBrief(store.loaded.dir,approved);
+          return creatorBriefStatus(store.loaded.dir,store.loaded.config);
+        });
+        json(response,200,{ok:true,status:updated});return;
+      }
       if (request.method === 'GET' && url.pathname === '/api/knowledge') {
         const kb=await import('../evidence/workbench.js');
         const status=await kb.knowledgeStatus(store.project);
