@@ -15,7 +15,7 @@ import { NativePreviewWorker } from './native-preview-worker.js';
 import type { Actor, Role } from './contracts.js';
 import { clientHtml } from './client-page.js';
 
-export interface SessionOptions { project: string; host?: string; port?: number; agentConfig?: AgentConfig }
+export interface SessionOptions { project: string; host?: string; port?: number; agentConfig?: AgentConfig; evidenceAgentConfig?: AgentConfig }
 const token = () => randomBytes(32).toString('base64url');
 function sameToken(a: string, b: string) { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); }
 async function body(request: IncomingMessage, limit = 2_000_000) {
@@ -171,9 +171,9 @@ export async function startSession(options: SessionOptions) {
         const kb=await import('../evidence/workbench.js');
         const status=await kb.knowledgeStatus(store.project);
         json(response,200,{status,job:evidenceJob?.progress??null,startedAt:evidenceJob?.startedAt??null,
-          lastError:evidenceLastError,agentConfigured:Boolean(options.agentConfig),
-          transmitsExternally:Boolean(options.agentConfig?.usesExternalServices),
-          paidAgent:Boolean(options.agentConfig?.usesPaidServices)});return;
+          lastError:evidenceLastError,agentConfigured:Boolean(options.evidenceAgentConfig),
+          transmitsExternally:Boolean(options.evidenceAgentConfig?.usesExternalServices),
+          paidAgent:Boolean(options.evidenceAgentConfig?.usesPaidServices)});return;
       }
       if (request.method === 'GET' && url.pathname === '/api/knowledge/notes') {
         const kb=await import('../evidence/workbench.js');
@@ -336,11 +336,11 @@ export async function startSession(options: SessionOptions) {
       }
       if (request.method === 'POST' && url.pathname === '/api/knowledge/run') {
         if(actor.role!=='owner')fail(403,'Only the owner can start source agents.');
-        if(!options.agentConfig)fail(409,'No agent provider configured. Source analysis cannot be simulated.');
+        if(!options.evidenceAgentConfig)fail(409,'No agent provider configured. Source analysis cannot be simulated.');
         const consent=z.object({confirmExternal:z.boolean().default(false),confirmPaid:z.boolean().default(false)}).strict().parse(await jsonBody(request));
-        if(options.agentConfig.usesExternalServices&&!consent.confirmExternal)
+        if(options.evidenceAgentConfig.usesExternalServices&&!consent.confirmExternal)
           fail(403,'Explicitly consent to external processing of uploaded research sources.');
-        if(options.agentConfig.usesPaidServices&&!consent.confirmPaid)
+        if(options.evidenceAgentConfig.usesPaidServices&&!consent.confirmPaid)
           fail(403,'Explicitly consent to potentially paid source-agent calls.');
         if(evidenceJob && !['failed','cancelled','complete'].includes(evidenceJob.progress.phase))
           fail(409,'A source analysis is already running.');
@@ -349,7 +349,7 @@ export async function startSession(options: SessionOptions) {
           progress:{phase:'idle' as const,done:0,total:0} as import('../evidence/pipeline.js').PipelineProgress};
         evidenceJob=job;evidenceLastError='';
         const {runEvidencePipeline}=await import('../evidence/pipeline.js');
-        void runEvidencePipeline(store.project,options.agentConfig,progress=>{
+        void runEvidencePipeline(store.project,options.evidenceAgentConfig,progress=>{
           job.progress=progress;
         },abort.signal).catch(error=>{
           evidenceLastError=(error as Error).message;
