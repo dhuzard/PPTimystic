@@ -56,19 +56,19 @@ function executeAdapter(config:AgentConfig,input:unknown,signal?:AbortSignal):Pr
     const abort=()=>finish(new Error('Source analysis cancelled. No incomplete result was accepted.'));
     signal?.addEventListener('abort',abort,{once:true});
     const timer=setTimeout(()=>finish(new Error('Source analysis agent timed out.')),config.timeoutMs);
-    child.stdout.on('data',piece=>{
+    child.stdout!.on('data',piece=>{
       output+=String(piece);
       if(output.length>2_000_000)finish(new Error('Source-agent output exceeds the 2 MB limit.'));
     });
-    child.stderr.on('data',piece=>{errors=(errors+String(piece)).slice(-2000);});
+    child.stderr!.on('data',piece=>{errors=(errors+String(piece)).slice(-2000);});
     child.on('error',error=>finish(error));
-    child.stdin.on('error',error=>finish(error));
+    child.stdin!.on('error',error=>finish(error));
     child.on('close',code=>{
       if(code!==0){finish(new Error('Source-agent process failed ('+code+'): '+errors));return;}
       try{finish(undefined,JSON.parse(output));}
       catch{finish(new Error('Source-agent returned invalid JSON. No evidence was accepted.'));}
     });
-    child.stdin.end(JSON.stringify(input)+'\n');
+    child.stdin!.end(JSON.stringify(input)+'\n');
   });
 }
 
