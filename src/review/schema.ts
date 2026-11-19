@@ -37,7 +37,7 @@ export const evidenceStatuses = ['requires-human-verification', 'source-read-by-
 export const inspections = ['source-yaml', 'storyline', 'brief', 'extracted-source', 'validation-report', 'geometry-report', 'rendered-preview'] as const;
 /** Review lenses (see agents/audience-panel.md). The default is the scientific presentation expert. */
 export const perspectives = ['scientific-expert', 'presentation-style', 'data-expert', 'design-critic', 'science-friend', 'reviewer-3',
-  'newcomer', 'decision-maker', 'field-rival', 'rigor-ethics', 'back-row'] as const;
+  'newcomer', 'decision-maker', 'field-rival', 'methods-specialist', 'rigor-ethics', 'back-row'] as const;
 /** A builder may block or report manual work; it can never defer or reject what the creator accepted. */
 export const builderOutcomes = ['blocked-needs-evidence', 'blocked-needs-creator', 'implemented-manually'] as const;
 export const wordingTargets = ['title', 'message', 'body', 'notes', 'caption', 'alt'] as const;
