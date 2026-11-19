@@ -179,6 +179,19 @@ export async function runEvidencePipeline(project:string,configInput:unknown,
     synthesis,critique,provenance:{source_count:plan.sources.length,chunk_count:tasks.length,proposed_note_count:notes.length}};
   await atomicWrite(await safePath(dir,'knowledge/synthesis.json'),JSON.stringify(snapshot,null,2));
   await atomicWrite(await safePath(dir,'knowledge/SYNTHESIS.md'),markdownSynthesis(synthesis,critique));
+  const candidates=[
+    '# Evidence-linked slide candidates','',
+    'These are unverified editorial suggestions based on a source-agent synthesis. Accept or reject them before adding to a presentation.',''
+  ];
+  for (const [i,a] of synthesis.arguments.entries()) {
+    candidates.push('## Candidate '+(i+1)+': '+a.proposed_argument,'',
+      'Direction: '+a.direction,'',
+      'Source evidence note IDs: '+a.evidence_refs.join(', '),'',
+      'Proposed slide use: '+a.slide_use,'',
+      'Limitations: '+a.unresolved_limitations,'',
+      'Visuals or charts must be checked against original pages and datasets, not inferred from extracted prose.','');
+  }
+  await atomicWrite(await safePath(dir,'knowledge/SLIDE-CANDIDATES.md'),candidates.join('\n')+'\n');
   emit({phase:'complete',done:tasks.length,total:tasks.length});
   return { ...snapshot.provenance,revision:plan.revision,output:'knowledge/SYNTHESIS.md',complete:true };
 }
