@@ -135,7 +135,8 @@ export function evaluateReadiness(
     ['critical', 'major'].includes(f.severity) && !['resolved', 'withdrawn'].includes(f.status)).map(f => f.id);
   if (high.length) risks.push('Unresolved critical/major scientific findings: ' + high.join(', ') + '.');
   if (record?.verdict === 'not-ready') risks.push('Independent reviewer judged the presentation NOT READY.');
-  const attested = record ? (({ override: _ignored, ...body }) => body)(record) : undefined;
+  let attested: Omit<ReadinessRecord, 'override'> | undefined;
+  if (record) { const { override: _ignored, ...body } = record; attested = body; }
   const overridden = Boolean(record?.override && attested &&
     record.override.reviewed_record_sha256 === hash(JSON.stringify(attested)));
   const can_deliver = blockers.length === 0 && (risks.length === 0 || overridden);
