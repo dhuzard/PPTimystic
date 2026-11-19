@@ -32,6 +32,10 @@ Run `npm run review -- --project NAME --mode verify`, then start a **fresh** `sc
 
 Give re-review only prepared context, original/current slide artifacts and extracted evidence. Exclude builder notes, reports, ledger history and manifests. Check contract success checks and claim types. Human claim verification belongs exclusively to a person; agents never verify on their behalf.
 
+## Mandatory scientific positioning and readiness signoff
+
+Before substantial authoring, challenge the brief's intellectual framing: look for relevant prior approaches, an overstated or unclear contribution and a missing demonstrated mechanism. Do not merely make the initial creator framing more fluent. For the final deck, after the independent re-review, run `npm run readiness -- --project NAME --mode prepare`, ask a fresh scientific-reviewer context (with the methods-specialist and field-rival lenses when relevant) to fill `review/readiness-submission.yaml`, then run `npm run readiness -- --project NAME --mode submit` and `--mode status`. The gate must address the six mandatory areas, alternatives, implemented-versus-proposed claims and difficult questions. If NOT READY, present the blockers to the creator **before** discussing slide aesthetics. Draft builds and previews are allowed; the final `bundle` is blocked. Never let an agent approve a human override. Full contract: `docs/readiness-gate.md`.
+
 ## Finish
 
 Report the files changed, changed slide IDs, retained assets, languages awaiting translation review, validation results, render folders (and whether images were actually viewed), findings resolved, rejected, blocked or stalled, open questions for human scientific review, and the anticipated questions with their answer basis. Never claim the science is verified: say what a person still has to check.
