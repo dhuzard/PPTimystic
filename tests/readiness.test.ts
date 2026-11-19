@@ -72,12 +72,12 @@ describe('mandatory scientific positioning and readiness gate', () => {
     expect(readinessSubmissionSchema.safeParse(unexamined).success).toBe(false);
   });
   test('fails closed on inconsistent verdicts and unanswered expert questions', () => {
-    const warnings = submission();
-    warnings.checks.methodological_landscape = { ...check(), status: 'warning' };
+    const warnings = { ...submission(), checks: { ...submission().checks,
+      methodological_landscape: { ...check(), status: 'warning' } } };
     expect(readinessSubmissionSchema.safeParse(warnings).success).toBe(false);
     expect(readinessSubmissionSchema.safeParse({ ...warnings, verdict: 'ready-with-warnings' }).success).toBe(true);
-    const blocked = submission();
-    blocked.checks.actual_mechanism = { ...check(), status: 'block' };
+    const blocked = { ...submission(), checks: { ...submission().checks,
+      actual_mechanism: { ...check(), status: 'block' } } };
     expect(readinessSubmissionSchema.safeParse({ ...blocked, verdict: 'ready-with-warnings' }).success).toBe(false);
     expect(readinessSubmissionSchema.safeParse({ ...blocked, verdict: 'not-ready' }).success).toBe(true);
     const unanswered = submission();
