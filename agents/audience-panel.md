@@ -14,6 +14,7 @@ Choose the lenses that fit the audience in the approved brief. A grant committee
 | `newcomer` | Adjacent-field scientist or student | Jargon, undefined acronyms, missing context, the slide where they got lost | "What does FAIR stand for, and why does it matter here?" |
 | `decision-maker` | Funder, chair, manager | The "so what?", the request, costs and risks; can they state the take-home message after the last slide? | "What do you need from us, and by when?" |
 | `field-rival` | Competing specialist | Novelty claims, missing or selective citations, comparison with prior work | "How does this differ from the 2022 benchmark by X et al.?" |
+| `methods-specialist` | Technical peer in the stated research field | Where the mechanism operates, actual algorithm/architecture, relevant alternative methods, reproducible evidence and failure boundaries | "What did you implement, and what does it do that a simpler established method cannot?" |
 | `rigor-ethics` | Methods and ethics officer | Randomisation, blinding, preregistration, reporting guidelines (e.g. ARRIVE, CONSORT, STROBE) where they apply, 3Rs, consent, conflicts of interest, data availability | "Were the outcome assessors blinded?" |
 | `back-row` | Attendee far from the screen | Readability at distance, contrast, colour-blind safety, dense slides, non-native-speaker clarity | (Mostly accessibility findings.) |
 
