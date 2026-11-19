@@ -416,14 +416,17 @@ projectOption(cli.command('session').alias('serve').description('Open a shared b
   .option('--host <address>','Bind address; use 0.0.0.0 only on a trusted private network','127.0.0.1')
   .option('--port <number>','HTTP port (0 selects an available port)','0')
   .option('--agent-config <path>','Local JSON executable configuration for the background agent worker')
+  .option('--evidence-agent-config <path>','Separate trusted subprocess for exhaustive source analysis')
   .action(async (_name,o)=>{
     const {startSession}=await import('../session/server.js');
     const {agentConfigSchema}=await import('../session/agent.js');
     const agentConfig=o.agentConfig?agentConfigSchema.parse(JSON.parse(await fs.readFile(path.resolve(o.agentConfig),'utf8'))):undefined;
-    const session=await startSession({project:o.project,host:o.host,port:Number(o.port),agentConfig});
+    const evidenceAgentConfig=o.evidenceAgentConfig?agentConfigSchema.parse(JSON.parse(await fs.readFile(path.resolve(o.evidenceAgentConfig),'utf8'))):undefined;
+    const session=await startSession({project:o.project,host:o.host,port:Number(o.port),agentConfig,evidenceAgentConfig});
     print({message:'PPTimistic shared studio is running. Invitation links grant access to this project; keep the owner link private.',
       url:session.url,owner:`${session.url}/#token=${session.ownerToken}`,editor:`${session.url}/#token=${session.editorToken}`,reviewer:`${session.url}/#token=${session.reviewerToken}`,
       agent:agentConfig?'Configured local worker':'Feedback is queued. Connect a local worker with --agent-config for automatic responses.',
+      evidenceAgent:evidenceAgentConfig?'Configured research source analyst':'No source agent configured; uploaded papers will not be marked analyzed.',
       network:o.host==='127.0.0.1'?'Local computer only.':'Share using this computer’s private network address in place of localhost.'});
     let stopping=false;
     const stop=()=>{if(stopping)return;stopping=true;void session.close().then(()=>{process.exitCode=0;});};
