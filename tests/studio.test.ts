@@ -194,12 +194,29 @@ describe('complete local workflow',()=>{
     gate.verdict='ready';
     await fs.writeFile(gateFile,YAML.stringify(gate));
     const gateSubmitted=await cli('readiness','--project','first-run','--mode','submit');
-    expect(gateSubmitted.code,gateSubmitted.output).toBe(0);
+    expect(gateSubmitted.code).not.toBe(0);
+    const pending=JSON.parse(gateSubmitted.output);
+    expect(pending.status).toBe('awaiting-human-approval');
+    expect(pending.can_deliver).toBe(false);
+    const refused=await cli('bundle','--project','first-run');
+    expect(refused.code).not.toBe(0);
+    expect(refused.output).toContain('sign off');
+    // A synthetic presenter approval fixture: this does not simulate a real person.
+    const approval={
+      version:1,approved_by:'Fixture Presenter',approved_at:new Date().toISOString(),
+      revision:pending.revision,record_sha256:pending.record_sha256,
+      acknowledgement:{
+        scientific_positioning_read:true,methods_and_limitations_understood:true,
+        expert_questions_reviewed:true,unresolved_findings_reviewed:true
+      },note:'Test-only signoff for an explicitly fictional deck.'
+    };
+    await fs.writeFile(path.join(project,'review/readiness-approval.json'),JSON.stringify(approval));
     const allowed=await cli('bundle','--project','first-run');
     expect(allowed.code,allowed.output).toBe(0);
     const result=JSON.parse(allowed.output);
     const manifest=JSON.parse(await fs.readFile(result.manifest,'utf8'));
     expect(manifest.scientificReadiness.status).toBe('ready');
+    expect(manifest.scientificReadiness.humanApproval.approved_by).toBe('Fixture Presenter');
     expect(manifest.scientificReadiness.recordSha256).toMatch(/^[a-f0-9]{64}$/);
   },120000);
   test('Markdown plan respects order and copies body without invention',async()=>{
