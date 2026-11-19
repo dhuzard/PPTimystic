@@ -127,15 +127,17 @@ export function evaluateReadiness(
 ): ReadinessDecision {
   const blockers: string[] = [], risks: string[] = [];
   if (!ledger.review_rounds || !ledger.assessment) blockers.push('No completed scientific review and overall assessment.');
-  if (ledger.reviewed_revision !== reviewRevision) blockers.push('The scientific review is absent or stale for the current deck.');
+  if (ledger.reviewed_revision !== reviewRevision || ledger.assessment?.reviewed_revision !== reviewRevision)
+    blockers.push('The scientific review and its assessment are absent or stale for the current deck.');
   if (!record) blockers.push('No Scientific Positioning & Readiness Gate submission.');
   else if (record.revision !== revision) blockers.push('Readiness assessment is stale: the deck, sources, images or output changed.');
   const high = ledger.findings.filter(f =>
     ['critical', 'major'].includes(f.severity) && !['resolved', 'withdrawn'].includes(f.status)).map(f => f.id);
   if (high.length) risks.push('Unresolved critical/major scientific findings: ' + high.join(', ') + '.');
   if (record?.verdict === 'not-ready') risks.push('Independent reviewer judged the presentation NOT READY.');
-  const { override, ...attested } = record ?? {};
-  const overridden = Boolean(override && override.reviewed_record_sha256 === hash(JSON.stringify(attested)));
+  const attested = record ? (({ override: _ignored, ...body }) => body)(record) : undefined;
+  const overridden = Boolean(record?.override && attested &&
+    record.override.reviewed_record_sha256 === hash(JSON.stringify(attested)));
   const can_deliver = blockers.length === 0 && (risks.length === 0 || overridden);
   const status: ReadinessDecision['status'] = blockers.length ? (!record ? 'not-reviewed' : 'stale')
     : risks.length ? (overridden ? 'overridden' : 'not-ready')
@@ -143,7 +145,7 @@ export function evaluateReadiness(
   return {
     required: true, status, can_deliver, blockers, risks, unresolved_high_priority: high,
     revision, verdict: record?.verdict, reviewed_by: record?.reviewer.name,
-    submitted_at: record?.submitted_at, override: overridden ? override : undefined,
+    submitted_at: record?.submitted_at, override: overridden ? record?.override : undefined,
     record_sha256: record ? hash(JSON.stringify(record)) : undefined
   };
 }
@@ -230,7 +232,7 @@ export async function submitReadiness(project: string, file: string) {
   if (!config.brief_required) throw new Error('The gate is only required for real projects with the approved-brief workflow.');
   const { revision, reviewRevision } = await readinessRevision(project);
   const ledger = await readLedger(dir);
-  if (!ledger.assessment || ledger.reviewed_revision !== reviewRevision)
+  if (!ledger.assessment || ledger.assessment.reviewed_revision !== reviewRevision || ledger.reviewed_revision !== reviewRevision)
     throw new Error('A current independent scientific review with an overall assessment is required first. Run review --mode prepare and submit.');
   const authority = await inspectSourceAuthority(project, deck);
   if (!authority.authoritative) throw new Error('Reconcile externally edited presentation artifacts before readiness review.');
@@ -260,7 +262,7 @@ export async function overrideReadiness(project: string, by: string, reason: str
   const { dir } = await loadProject(project);
   const record = await currentRecord(dir);
   if (!record) throw new Error('No readiness record.');
-  const { override: previous, ...reviewed } = record;
+  const { override: _previous, ...reviewed } = record;
   const updated = readinessRecordSchema.parse({
     ...reviewed,
     override: {
