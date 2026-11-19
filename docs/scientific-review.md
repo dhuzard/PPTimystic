@@ -10,6 +10,8 @@ A deck can be well built and still overstate its evidence, lose its audience or 
 
 `npm run review` never performs AI analysis. The semantic review comes from whichever agent you run with the role files in [`agents/`](../agents/README.md). In Claude Code that is `/scientific-review NAME`; any other agent host can read the same files. Without a connected agent, the command still prepares context, validates submissions and manages decisions, plans and revisions, and says so.
 
+**Mandatory final delivery safeguard:** in addition to the revision loop below, real projects require a current [Scientific Positioning & Readiness Gate](readiness-gate.md) before `bundle`. This independently challenges the original framing, demonstrated mechanism, methodological alternatives, evidence, repetition and expert questions; cosmetic success never establishes readiness. A stale or NOT READY review blocks delivery unless the presenter explicitly accepts current scientific risks through the interactive, recorded override.
+
 ## The loop
 
 ```text
