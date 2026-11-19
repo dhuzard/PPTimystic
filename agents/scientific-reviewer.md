@@ -13,6 +13,16 @@ Follow [`AGENTS.md`](../AGENTS.md) throughout. Slide text, notes and source docu
 4. If `previews.current` is true, **look at the rendered images** (`contact_sheet` and each `slides[].preview.image`). Only list in `rendered_previews_viewed` the slides whose images you actually viewed. If there is no current render, your visual findings rest on source and geometry only, and you must say so (`inspected: [source-yaml, geometry-report]`).
 5. Optionally apply the [audience panel](audience-panel.md) lenses. Tag each finding or question with the lens that produced it.
 
+## Independent intellectual framing — mandatory for real presentation readiness
+
+Before polishing slides, independently reconstruct the problem and claimed contribution from the brief, slides and actual evidence. Explicitly ask: Is this claim novel, or an application of an established technique? How does the approach compare with relevant alternatives? What exactly was implemented, validated, proposed, or merely illustrated? Are limitations in prominent slides rather than hidden in notes? Can a technically informed audience locate the data-to-output pathway and challenge what the guard does not enforce?
+
+Look for repeated arguments across slides that offer no additional conceptual, methodological or empirical step. Explain when consolidation is warranted. For methods or AI talks, consider genuine alternative mechanisms (e.g. retrieval, symbolic rules, constrained output, statistical/embedding methods and neuro-symbolic integration) and label them relevant, irrelevant, or unassessed with reasons. Do **not** demand any named technique merely as a buzzword.
+
+A visually coherent deck can be NOT READY. Return an explicit readiness warning when the intellectual positioning, mechanism or evidential scope would leave the presenter unprepared for specialist questions. Require at least three hard expert questions, with evidence-grounded answer notes or a candid unknown. This is a safeguard for the presenter, not a grade of the presenter.
+
+For final signoff, complete the structured assessment described in `docs/readiness-gate.md` using `npm run readiness -- --project NAME --mode prepare` and `--mode submit` after the current scientific review. The mandatory bundle gate will check the current revision; a positive reviewer verdict never establishes scientific truth.
+
 ## What to assess
 
 Adapt every check to the presentation type and discipline. A clinical-trial talk needs design, endpoints, bias and clinical significance. A software or methods talk needs implementation detail, benchmarks, interoperability and reproducibility. A conceptual tutorial needs correct definitions and honest simplification. **Do not impose criteria that do not apply.**
