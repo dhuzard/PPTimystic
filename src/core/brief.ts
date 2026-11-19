@@ -86,6 +86,53 @@ export async function saveCreatorBrief(dir: string, raw: unknown) {
   const parsed = briefSchema.parse(raw);
   await writeYaml(await safePath(dir, 'presentation-brief.yaml'), parsed);
 }
+
+/** Persist an incomplete browser interview without silently approving it. */
+export async function saveCreatorBriefDraft(dir:string,config:Project,raw:unknown) {
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Expected a structured creator brief.');
+  const src=raw as Record<string,unknown>;
+  const defaults=blankBrief(config);
+  const take=(group:string,fields:Record<string,string>)=>{
+    const incoming=src[group];
+    if(!incoming||typeof incoming!=='object'||Array.isArray(incoming))throw new Error('Missing brief group '+group);
+    const obj=incoming as Record<string,unknown>;
+    if(Object.keys(obj).some(key=>!(key in fields)))throw new Error('Unknown brief field in '+group);
+    return Object.fromEntries(Object.keys(fields).map(key=>{
+      const value=obj[key];
+      if(typeof value!=='string'||value.length>4000)throw new Error(group+'.'+key+' must be text under 4000 characters.');
+      return [key,value];
+    }));
+  };
+  const incomingDelivery=src.delivery as Record<string,unknown>|undefined;
+  const duration=incomingDelivery?.duration_minutes;
+  if(!Number.isInteger(duration)||Number(duration)<0||Number(duration)>480)
+    throw new Error('Duration must be a whole number from 0 to 480 minutes.');
+  if(typeof incomingDelivery?.format_and_setting!=='string'||incomingDelivery.format_and_setting.length>4000)
+    throw new Error('Delivery format and setting must be valid text.');
+  const constraints=src.constraints as Record<string,unknown>|undefined;
+  if(!constraints||constraints.source_locale!==config.source_locale||
+    JSON.stringify(constraints.output_locales)!==JSON.stringify(config.output_locales))
+    throw new Error('Creator brief languages must match the project settings.');
+  if(typeof constraints.accessibility_and_other!=='string'||constraints.accessibility_and_other.length>4000)
+    throw new Error('Accessibility requirements must be text.');
+  const wishes=src.further_wishes??'';
+  if(typeof wishes!=='string'||wishes.length>4000)throw new Error('Further wishes must be text.');
+  const result={
+    version:1 as const,
+    creator:take('creator',defaults.creator),
+    goal:take('goal',defaults.goal),
+    audience:take('audience',defaults.audience),
+    delivery:{duration_minutes:Number(duration),format_and_setting:incomingDelivery.format_and_setting},
+    content:take('content',defaults.content),
+    design:take('design',defaults.design),
+    constraints:{source_locale:config.source_locale,output_locales:config.output_locales,
+      accessibility_and_other:constraints.accessibility_and_other},
+    further_wishes:wishes
+  };
+  await writeYaml(await safePath(dir,'presentation-brief.yaml'),result);
+  return checkCreatorBrief(result,config);
+}
+
 export function checkCreatorBrief(raw: unknown, config: Project): BriefStatus {
   if (!config.brief_required) return { required: false, approved: true, errors: [] };
   if (raw === undefined) return { required: true, approved: false, errors: [
