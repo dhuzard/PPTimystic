@@ -30,7 +30,7 @@ async function request(url:string,body?:unknown):Promise<any>{
     body:body===undefined?undefined:JSON.stringify(body)});
   const data=await r.json();if(!r.ok)throw new Error(data.error??'Goal interview failed.');return data;
 }
-export async function openBriefStudio(options:{owner:boolean;notice:(message:string,isError?:boolean)=>void}){
+export async function openBriefStudio(options:{owner:boolean;notice:(message:string,isError?:boolean)=>void;onApproved?:()=>void}){
   const dialog=document.createElement('dialog');dialog.className='readiness-dialog';
   document.body.append(dialog);dialog.showModal();
   let response:BriefResponse;
@@ -100,6 +100,7 @@ export async function openBriefStudio(options:{owner:boolean;notice:(message:str
           render();
           if(result.status.approved){
             options.notice('Goal approved. Open Sources & evidence to analyze your papers against this objective.');
+            options.onApproved?.();
           }else options.notice('Approval blocked: complete the missing fields.',true);
         }catch(e){options.notice(e instanceof Error?e.message:String(e),true);}
       })();
