@@ -56,7 +56,7 @@ export async function ingest(dir: string, input?: string) {
         if (text.replace(/--\s*\d+\s+of\s+\d+\s*--/g, '').trim().length < 10) throw new Error('No usable text; scanned PDFs require local OCR.');
       } else if (ext === '.pptx') {
         const { importPptxScene } = await import('../session/pptx-native.js');
-        const original = await importPptxScene(data);
+        const original = await importPptxScene(data).catch(error => { throw new Error('Unsupported or malformed PowerPoint source: '+(error as Error).message); });
         text = original.slides.map((slide, i) => [
           '## Original slide '+(i+1),
           ...slide.objects.map(o=>o.runs.map(run=>run.text).join(' ')).filter(Boolean)
