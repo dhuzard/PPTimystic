@@ -364,13 +364,20 @@ cli.command('review-pptx').description('Import an existing PowerPoint as a non-d
   .requiredOption('--project <name>','New project folder name')
   .option('--title <title>','Presentation title')
   .option('--locale <locale>','Source language: en-US or fr-FR','en-US')
+  .option('--no-render','Preserve the original without attempting local PowerPoint slide previews')
   .action(async o=>{
     if(!['en-US','fr-FR'].includes(o.locale))throw new Error('Review-import locale must be en-US or fr-FR.');
     const {createPptxReviewProject}=await import('../core/pptx-review.js');
     const data=await fs.readFile(path.resolve(o.file));
     print(await createPptxReviewProject({name:o.project,title:o.title||path.basename(o.file,'.pptx'),
       locale:o.locale,data}));
-    print('Review-only: preserve the original PowerPoint. Approve a presentation brief, then run scientific review and use original rendered slide previews.');
+    if(o.render){
+      try{
+        const {renderReviewOriginal}=await import('../core/pptx-review.js');
+        print(await renderReviewOriginal(o.project));
+      }catch(error){print({original_rendered:false,warning:(error as Error).message});}
+    }
+    print('Review-only: original PowerPoint preserved. Approve the brief, run independent review, then read the slide-specific findings.');
   });
 projectOption(cli.command('ingest').description('Retain and extract local documents with hashes; does not invent slide summaries'))
   .option('--inputs <folder>','Folder to import (defaults to project inputs/)')
