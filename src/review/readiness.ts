@@ -281,6 +281,13 @@ export async function submitReadiness(project: string, file: string) {
   if (!parsed.success) throw new Error('Readiness submission invalid:\n' +
     parsed.error.issues.map(issue => issue.path.join('.') + ': ' + issue.message).join('\n'));
   if (parsed.data.revision !== revision) throw new Error('Readiness submission is stale; run readiness --mode prepare and review the changed deck.');
+  if (await exists(await safePath(dir,'content/pptx-review-origin.json')) &&
+    parsed.data.verdict !== 'not-ready') {
+    const {currentPreviews}=await import('./context.js');
+    const previews=await currentPreviews(project,dir,config.source_locale);
+    if(!previews.current || !parsed.data.reviewer.inspected.includes('rendered-slides'))
+      throw new Error('An imported PowerPoint cannot be declared READY without current original-slide images and a reviewer who actually inspected them. Submit NOT READY or complete visual review first.');
+  }
   const record = readinessRecordSchema.parse({ ...parsed.data, submitted_at: new Date().toISOString() });
   const destination = await safePath(dir, readinessFile);
   if (await exists(destination)) {

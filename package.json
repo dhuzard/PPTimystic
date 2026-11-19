@@ -25,6 +25,8 @@
     "render": "tsx src/cli/index.ts render",
     "revise": "tsx src/cli/index.ts revise",
     "ingest": "tsx src/cli/index.ts ingest",
+    "knowledge": "tsx src/cli/index.ts knowledge",
+    "review-pptx": "tsx src/cli/index.ts review-pptx",
     "images": "tsx src/cli/index.ts images",
     "session": "tsx src/cli/index.ts session",
     "typecheck": "tsc --noEmit",

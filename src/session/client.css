@@ -73,3 +73,23 @@ button.rd-danger{font-size:13px;background:#8a3830;color:#fff;border-color:#8a38
   .readiness-launch{min-width:110px}
   .app-header{gap:7px;padding:0 10px}
 }
+
+
+/* Browser-first source workbench: visually consistent with scientific sign-off. */
+.kb-table{width:100%;border-collapse:collapse;font-size:12px;margin:12px 0 18px;background:#fff;border:1px solid #dce6df;border-radius:8px}
+.kb-table th{padding:11px;text-align:left;color:#526659;background:#eff5f1;border-bottom:1px solid #dce6df}
+.kb-table td{vertical-align:top;padding:12px 11px;border-bottom:1px solid #e5ede7;line-height:1.5}
+.kb-table td:first-child{overflow-wrap:anywhere;max-width:310px}
+.kb-table small{display:block;font-size:10px;color:#536657;margin-top:3px}
+.kb-table button{font-size:11px;padding:6px 10px}
+.kb-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:13px 0}
+.kb-upload{display:inline-block;background:#edf4ef;border:1px solid #b9d4c2;border-radius:7px;padding:10px 13px;color:#205740;font-size:12px;font-weight:700;cursor:pointer;margin:0}
+.kb-upload input{display:block;max-width:300px;margin-top:6px;font-size:11px;padding:5px}
+.kb-progress{border:1px solid #c4d9cb;background:#edf5ee;border-radius:8px;margin:12px 0;padding:13px}
+.kb-progress strong{font-size:13px}
+.kb-progress p{font-size:12px;color:#425c4c;margin:5px 0 0}
+.kb-consent{border-left:3px solid #d7a96b;background:#fff9ef;padding:12px;margin:14px 0}
+.kb-consent h3{margin:0 0 7px}
+.kb-error{color:#9d302c!important;display:block;font-size:11px;overflow-wrap:anywhere}
+.kb-notes{white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:400px;line-height:1.55;padding:14px;background:#fafbf8;border:1px solid #dbe5dc;border-radius:9px;font-size:12px}
+@media(max-width:720px){.kb-table{font-size:11px}.kb-table td{padding:7px 5px}.kb-upload input{max-width:200px}.app-header .readiness-launch{min-width:84px;max-width:130px;font-size:10px}}

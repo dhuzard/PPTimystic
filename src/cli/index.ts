@@ -344,6 +344,41 @@ projectOption(cli.command('bundle').description('Package current PPTX files, val
   .option('--previews <choice>','none or latest; latest requires current rendered previews','none')
   .option('--input <path>','Explicitly include one project-relative original input under inputs/; repeat for more', (value:string, previous:string[])=>[...previous,value], [] as string[])
   .action(async (_name,o)=>{print(await bundleProject(o.project,{previews:o.previews,inputs:o.input}));});
+projectOption(cli.command('knowledge').description('Goal-bound source knowledge base and multi-agent evidence analysis'))
+  .requiredOption('--mode <mode>','prepare, status, run')
+  .option('--agent-config <file>','Trusted operator-provided JSON adapter configuration for run mode')
+  .action(async (_name,o)=>{
+    const kb=await import('../evidence/workbench.js');
+    if(o.mode==='prepare') print(await kb.prepareKnowledge(o.project));
+    else if(o.mode==='status') print(await kb.knowledgeStatus(o.project));
+    else if(o.mode==='run'){
+      if(!o.agentConfig)throw new Error('No source analyst configured. Supply --agent-config; no AI analysis will be simulated.');
+      const { agentConfigSchema }=await import('../session/agent.js');
+      const config=agentConfigSchema.parse(JSON.parse(await fs.readFile(path.resolve(o.agentConfig),'utf8')));
+      const { runEvidencePipeline }=await import('../evidence/pipeline.js');
+      print(await runEvidencePipeline(o.project,config,status=>console.error('Evidence agent stage: '+JSON.stringify(status))));
+    } else throw new Error('Knowledge mode must be prepare, status or run.');
+  });
+cli.command('review-pptx').description('Import an existing PowerPoint as a non-destructive review-only project')
+  .requiredOption('--file <pptx>','Original PowerPoint file')
+  .requiredOption('--project <name>','New project folder name')
+  .option('--title <title>','Presentation title')
+  .option('--locale <locale>','Source language: en-US or fr-FR','en-US')
+  .option('--no-render','Preserve the original without attempting local PowerPoint slide previews')
+  .action(async o=>{
+    if(!['en-US','fr-FR'].includes(o.locale))throw new Error('Review-import locale must be en-US or fr-FR.');
+    const {createPptxReviewProject}=await import('../core/pptx-review.js');
+    const data=await fs.readFile(path.resolve(o.file));
+    print(await createPptxReviewProject({name:o.project,title:o.title||path.basename(o.file,'.pptx'),
+      locale:o.locale,data}));
+    if(o.render){
+      try{
+        const {renderReviewOriginal}=await import('../core/pptx-review.js');
+        print(await renderReviewOriginal(o.project));
+      }catch(error){print({original_rendered:false,warning:(error as Error).message});}
+    }
+    print('Review-only: original PowerPoint preserved. Approve the brief, run independent review, then read the slide-specific findings.');
+  });
 projectOption(cli.command('ingest').description('Retain and extract local documents with hashes; does not invent slide summaries'))
   .option('--inputs <folder>','Folder to import (defaults to project inputs/)')
   .action(async (_name,o)=>{const {dir}=await loadProject(o.project);const records=await ingest(dir,o.inputs);print(records);if(records.some(r=>r.error))process.exitCode=1;});
@@ -381,14 +416,17 @@ projectOption(cli.command('session').alias('serve').description('Open a shared b
   .option('--host <address>','Bind address; use 0.0.0.0 only on a trusted private network','127.0.0.1')
   .option('--port <number>','HTTP port (0 selects an available port)','0')
   .option('--agent-config <path>','Local JSON executable configuration for the background agent worker')
+  .option('--evidence-agent-config <path>','Separate trusted subprocess for exhaustive source analysis')
   .action(async (_name,o)=>{
     const {startSession}=await import('../session/server.js');
     const {agentConfigSchema}=await import('../session/agent.js');
     const agentConfig=o.agentConfig?agentConfigSchema.parse(JSON.parse(await fs.readFile(path.resolve(o.agentConfig),'utf8'))):undefined;
-    const session=await startSession({project:o.project,host:o.host,port:Number(o.port),agentConfig});
+    const evidenceAgentConfig=o.evidenceAgentConfig?agentConfigSchema.parse(JSON.parse(await fs.readFile(path.resolve(o.evidenceAgentConfig),'utf8'))):undefined;
+    const session=await startSession({project:o.project,host:o.host,port:Number(o.port),agentConfig,evidenceAgentConfig});
     print({message:'PPTimistic shared studio is running. Invitation links grant access to this project; keep the owner link private.',
       url:session.url,owner:`${session.url}/#token=${session.ownerToken}`,editor:`${session.url}/#token=${session.editorToken}`,reviewer:`${session.url}/#token=${session.reviewerToken}`,
       agent:agentConfig?'Configured local worker':'Feedback is queued. Connect a local worker with --agent-config for automatic responses.',
+      evidenceAgent:evidenceAgentConfig?'Configured research source analyst':'No source agent configured; uploaded papers will not be marked analyzed.',
       network:o.host==='127.0.0.1'?'Local computer only.':'Share using this computer’s private network address in place of localhost.'});
     let stopping=false;
     const stop=()=>{if(stopping)return;stopping=true;void session.close().then(()=>{process.exitCode=0;});};
