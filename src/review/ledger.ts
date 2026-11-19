@@ -261,8 +261,9 @@ export function mergeSubmission(input: Ledger, raw: unknown, ctx: SubmitContext)
     else ledger.questions.push({ ...q, id: nextId(ledger.questions.map(x => x.id), 'Q'), round });
     result.questions.push(existing?.id ?? ledger.questions.at(-1)!.id);
   }
-  if (submission.assessment) ledger.assessment = { ...submission.assessment, round, agent: actor };
+  if (submission.assessment) ledger.assessment = { ...submission.assessment, round, agent: actor, reviewed_revision: ctx.revision };
   ledger.review_rounds = round;
+  ledger.reviewed_revision = ctx.revision;
   history(ledger, at, 'review-submitted', actor, `round ${round}: ${result.created.length} new, ${result.updated.length} updated, ${result.reopened.length} reopened, ${result.suppressed.length} suppressed, ${result.verified.length} verified`);
   return { ledger: ledgerSchema.parse(ledger), result };
 }
