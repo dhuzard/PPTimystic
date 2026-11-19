@@ -87,7 +87,7 @@ test('review-only PowerPoint import preserves original and blocks generic export
   const p=new PptxGenJS();p.layout='LAYOUT_WIDE';p.addSlide().addText('Measurements need context',{x:1,y:1,w:9,h:1});
   const input=path.join(root,'presentation.pptx'),bytes=Buffer.from(await p.write({outputType:'nodebuffer'}) as ArrayBuffer);
   await fs.writeFile(input,bytes);
-  const imported=await cli('review-pptx','--project','pptx-audit','--file',input,'--title','Imported PPTX');
+  const imported=await cli('review-pptx','--project','pptx-audit','--file',input,'--title','Imported PPTX','--no-render');
   expect(imported.code,imported.stderr).toBe(0);
   const preserved=await fs.readFile(path.join(root,'projects/pptx-audit/inputs/original.pptx'));
   expect(preserved).toEqual(bytes);
