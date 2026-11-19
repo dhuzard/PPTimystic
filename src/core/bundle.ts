@@ -21,6 +21,9 @@ export async function bundleProject(name: string, options: BundleOptions = {}) {
   const previews = options.previews ?? 'none';
   if (!['none', 'latest'].includes(previews)) throw new Error('Previews must be none or latest.');
   const { dir, config, deck, theme } = await loadProject(name);
+  // Draft PPTX builds remain available for inspection. Final delivery is gated.
+  const { assertReadyForDelivery } = await import('../review/readiness.js');
+  const readiness = await assertReadyForDelivery(name);
   const artifacts = await inspectArtifacts(name);
   const artifactProblems = artifactIssues(artifacts);
   if (artifactProblems.length) throw new Error(artifactProblems.map(issue => `${issue.locale}: ${issue.message}`).join('\n'));
@@ -95,6 +98,11 @@ export async function bundleProject(name: string, options: BundleOptions = {}) {
     const manifest = { version: 1, project: name, createdAt: new Date().toISOString(), locales: config.output_locales, files, provenance,
       previews: previews === 'latest' ? Object.fromEntries(artifacts.map(a => [a.locale, previewFiles.find(p => p.locale === a.locale)?.renderer])) : {},
       originalInputsIncluded: inputFiles.map(input => input.relative),
+      scientificReadiness: {
+        status: readiness.status, verdict: readiness.verdict ?? null, revision: readiness.revision ?? null,
+        recordSha256: readiness.record_sha256 ?? null, risks: readiness.risks,
+        humanOverride: readiness.override ?? null
+      },
       visualInspection: 'Not performed by bundling. Review individual preview images before delivery.' };
     await fs.writeFile(path.join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2));
     await fs.rename(staging, destination);
