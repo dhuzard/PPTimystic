@@ -138,6 +138,10 @@ export async function startSession(options: SessionOptions) {
       const actor = identity.actor;
       const locale = url.searchParams.get('locale') ?? store.loaded.config.source_locale;
       if (request.method === 'GET' && url.pathname === '/api/state') { json(response, 200, await store.run(() => store.snapshot(actor, locale))); return; }
+      if (request.method === 'GET' && url.pathname === '/api/readiness') {
+        const gate = await import('../review/readiness.js');
+        json(response, 200, await store.run(() => gate.readinessDetail(store.project))); return;
+      }
       if (request.method === 'GET' && url.pathname === '/api/events') {
         const state = await store.run(() => store.snapshot(actor, locale));
         response.writeHead(200, { 'Content-Type': 'text/event-stream', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no' });
@@ -176,6 +180,9 @@ export async function startSession(options: SessionOptions) {
         if (state.files[language] !== await hashFile(file)) fail(409, 'This export was modified outside PPTimistic.');
         const [artifact] = await store.run(() => inspectArtifacts(store.project, language));
         if (artifact.status !== 'current') fail(409, 'This export is older than the current source. Build again before downloading.');
+        const gate = await import('../review/readiness.js');
+        try { await gate.assertReadyForDelivery(store.project); }
+        catch (error) { fail(409, (error as Error).message); }
         response.writeHead(200, { 'Content-Type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'Content-Disposition': `attachment; filename="${name}"` }); response.end(await fs.readFile(file)); return;
       }
       if (request.method === 'GET' && url.pathname === '/api/previews') {
@@ -191,6 +198,40 @@ export async function startSession(options: SessionOptions) {
         const [artifact] = await store.run(() => inspectArtifacts(store.project, locale));
         if (artifact.status !== 'current' || manifest.pptxSha256 !== artifact.sha256) fail(409, 'This preview is older than the current presentation. Render again.');
         response.writeHead(200, { 'Content-Type': 'image/png' }); response.end(await fs.readFile(file)); return;
+      }
+      if (request.method === 'POST' && url.pathname === '/api/readiness/approve') {
+        if (actor.role !== 'owner') fail(403, 'Only the session owner can sign off scientific readiness.');
+        const input = z.object({
+          revision: z.string().regex(/^[a-f0-9]{64}$/),
+          record_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+          acknowledgement: z.object({
+            scientific_positioning_read: z.literal(true),
+            methods_and_limitations_understood: z.literal(true),
+            expert_questions_reviewed: z.literal(true),
+            unresolved_findings_reviewed: z.literal(true)
+          }).strict(),
+          note: z.string().max(2000).optional()
+        }).strict().parse(await jsonBody(request));
+        const gate = await import('../review/readiness.js');
+        const decision = await store.run(() => gate.approveReadiness(store.project, { ...input, approved_by: actor.name }));
+        json(response, 200, { ok: true, status: decision }); return;
+      }
+      if (request.method === 'POST' && url.pathname === '/api/readiness/override') {
+        if (actor.role !== 'owner') fail(403, 'Only the session owner can accept an explicit scientific readiness risk.');
+        const input = z.object({
+          revision: z.string().regex(/^[a-f0-9]{64}$/),
+          record_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+          reason: z.string().trim().min(20).max(2000),
+          confirmed: z.literal(true)
+        }).strict().parse(await jsonBody(request));
+        const gate = await import('../review/readiness.js');
+        const decision = await store.run(async () => {
+          const before = await gate.readinessStatus(store.project);
+          if (before.revision !== input.revision || before.record_sha256 !== input.record_sha256)
+            fail(409, 'This scientific assessment changed. Read the latest report before overriding.');
+          return gate.overrideReadiness(store.project, actor.name, input.reason, true);
+        });
+        json(response, 200, { ok: true, status: decision }); return;
       }
       if (request.method === 'POST' && url.pathname === '/api/uploads') {
         if (actor.role === 'reviewer') fail(403, 'Reviewers cannot upload images.');
