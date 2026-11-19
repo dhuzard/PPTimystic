@@ -118,7 +118,7 @@ describe('mandatory scientific positioning and readiness gate', () => {
 test('manual sign-off requires four affirmative acknowledgements and revision-bound evidence',()=>{
   const valid={
     version:1, approved_by:'Actual Presenter', approved_at:'2026-11-19T19:00:00Z',
-    revision:'a'.repeat(64), record_sha256:'b'.repeat(64),
+    revision:'a'.repeat(64), record_sha256:'b'.repeat(64), ledger_sha256:'c'.repeat(64),
     acknowledgement:{
       scientific_positioning_read:true,methods_and_limitations_understood:true,
       expert_questions_reviewed:true,unresolved_findings_reviewed:true
