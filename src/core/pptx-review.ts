@@ -70,3 +70,58 @@ export async function readPptxReviewOrigin(dir:string) {
     throw new Error('Original PowerPoint changed after review import.');
   return raw;
 }
+
+
+/** Best-effort one-pass rendering of the ORIGINAL, never the YAML text mirror. */
+export async function renderReviewOriginal(project:string){
+  const {loadProject}=await import('./io.js');
+  const {dir,config,deck}=await loadProject(project);
+  const origin=await readPptxReviewOrigin(dir);
+  if(!origin)throw new Error('This project was not created from an original PowerPoint.');
+  const {capabilities,run,contactSheet}=await import('../rendering/index.js');
+  const tools=await capabilities();
+  if(!(tools.soffice&&tools.pdftoppm)&&!tools.powerpoint)
+    return {available:false,message:'Install LibreOffice and pdftoppm, or PowerPoint on Windows, to inspect original slide visuals. Text-only review cannot certify graphics.'};
+  const os=await import('node:os');
+  const {pathToFileURL}=await import('node:url');
+  const {root}=await import('./io.js');
+  const staging=await fs.mkdtemp(path.join(os.tmpdir(),'pptimistic-original-review-'));
+  try{
+    const source=await safePath(dir,origin.source);
+    if(tools.soffice&&tools.pdftoppm){
+      const profile=await fs.mkdtemp(path.join(os.tmpdir(),'pptimistic-review-lo-'));
+      try{
+        await run(tools.soffice,['-env:UserInstallation='+pathToFileURL(profile).href,
+          '--headless','--convert-to','pdf','--outdir',staging,source],180000);
+        const pdf=path.join(staging,'original.pdf');
+        if(!await exists(pdf))throw new Error('Original PowerPoint did not render to PDF.');
+        await run(tools.pdftoppm,['-png','-scale-to','1600',pdf,path.join(staging,'slide')],180000);
+      }finally{await fs.rm(profile,{recursive:true,force:true});}
+    }else{
+      const ps=path.join(root,'src/rendering/powerpoint.ps1');
+      await run('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',ps,
+        '-Deck',source,'-Destination',staging],180000);
+    }
+    const images=(await fs.readdir(staging)).filter(name=>/^slide-?\d+\.png$/i.test(name))
+      .sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+    if(images.length!==origin.slide_count)throw new Error('Original rendering produced '+images.length+
+      ' images, expected '+origin.slide_count+'. Review output was not marked current.');
+    const target=await safePath(dir,'output/reference');
+    await fs.mkdir(target,{recursive:true});
+    const frames:{id:string;image:string;sha256:string}[]=[];
+    const frameNames:string[]=[];
+    for(const [i,file] of images.entries()){
+      const name='original-'+String(i+1).padStart(3,'0')+'.png';
+      const image=await fs.readFile(path.join(staging,file));
+      await atomicWrite(await safePath(dir,'output/reference/'+name),image);
+      frames.push({id:deck.slides[i].id,image:'output/reference/'+name,sha256:hash(image)});
+      frameNames.push(name);
+    }
+    await contactSheet(target,frameNames);
+    await atomicWrite(await safePath(dir,'content/reference-preview.json'),JSON.stringify({
+      version:1,source:origin.source,sourceSha256:origin.source_sha256,locale:config.source_locale,slides:frames
+    },null,2));
+    return {available:true,slide_count:frames.length,
+      message:'Rendered original PowerPoint slides for scientific inspection. Visual content still requires an actual reviewer to view the images.'};
+  }finally{await fs.rm(staging,{recursive:true,force:true});}
+}
